@@ -1,0 +1,252 @@
+{
+  "business": { "id": "yc-studios", "name": "YC Studios" },
+  "roundTo": 50,
+  "industries": [{ "id": "creative", "name": "Creative Agency" }],
+  "services": [
+    { "id": "video", "industryId": "creative", "name": "Video Production" },
+    { "id": "photo", "industryId": "creative", "name": "Photography" },
+    { "id": "branding", "industryId": "creative", "name": "Branding" },
+    { "id": "website", "industryId": "creative", "name": "Website Design" }
+  ],
+  "questions": [
+    {
+      "id": "org_type", "type": "multiple_choice", "stage": "goals", "order": 1, "required": true,
+      "text": "What best describes your organization?",
+      "options": [
+        { "value": "individual", "label": "Individual / Creator" },
+        { "value": "small_business", "label": "Small Business" },
+        { "value": "company", "label": "Established Company" },
+        { "value": "enterprise", "label": "Enterprise / Corporation" },
+        { "value": "nonprofit", "label": "Nonprofit" },
+        { "value": "private_school", "label": "Private School" }
+      ]
+    },
+    {
+      "id": "goal", "type": "multiple_choice", "stage": "goals", "order": 2, "required": true,
+      "text": "What is the main goal of this project?",
+      "options": [
+        { "value": "brand_awareness", "label": "Build brand awareness", "complexity": 2 },
+        { "value": "launch", "label": "Launch a product or campaign", "complexity": 3 },
+        { "value": "content", "label": "Ongoing content", "complexity": 2 },
+        { "value": "event", "label": "Capture an event", "complexity": 1 }
+      ]
+    },
+    {
+      "id": "video_style", "type": "multi_select", "stage": "discovery", "order": 1, "required": true,
+      "serviceIds": ["video"],
+      "text": "What kind of video work do you need?",
+      "options": [
+        { "value": "brand_film", "label": "Brand film", "complexity": 4 },
+        { "value": "social", "label": "Social media content", "complexity": 1 },
+        { "value": "commercial", "label": "Commercial / Ad", "complexity": 4 },
+        { "value": "event_video", "label": "Event coverage", "complexity": 2 },
+        { "value": "documentary", "label": "Documentary style", "complexity": 5 }
+      ]
+    },
+    {
+      "id": "commercial_broadcast", "type": "yes_no", "stage": "discovery", "order": 2, "required": true,
+      "serviceIds": ["video"],
+      "showIf": { "questionId": "video_style", "op": "includes", "value": "commercial" },
+      "text": "Will the commercial air on broadcast TV or paid placements?"
+    },
+    {
+      "id": "shoot_days", "type": "slider", "stage": "discovery", "order": 3, "required": true,
+      "serviceIds": ["video"], "min": 1, "max": 10,
+      "text": "How many shoot days do you anticipate?"
+    },
+    {
+      "id": "quality_expectation", "type": "multiple_choice", "stage": "outcomes", "order": 1, "required": true,
+      "text": "What level of production quality are you looking for?",
+      "options": [
+        { "value": "simple", "label": "Simple and effective", "complexity": 0 },
+        { "value": "professional", "label": "Polished and professional", "complexity": 2 },
+        { "value": "premium", "label": "Premium — top-tier craft", "complexity": 4 },
+        { "value": "luxury", "label": "Luxury / cinematic flagship", "complexity": 6 }
+      ]
+    },
+    {
+      "id": "timeline_social", "type": "multiple_choice", "stage": "timeline", "order": 1, "required": true,
+      "text": "How fast do you need it turned around?",
+      "showIf": {
+        "all": [
+          { "questionId": "video_style", "op": "includes", "value": "social" },
+          { "not": { "any": [
+            { "questionId": "video_style", "op": "includes", "value": "brand_film" },
+            { "questionId": "video_style", "op": "includes", "value": "commercial" },
+            { "questionId": "video_style", "op": "includes", "value": "documentary" }
+          ] } }
+        ]
+      },
+      "options": [
+        { "value": "next_day", "label": "Next day" },
+        { "value": "three_day", "label": "Within 3 days" },
+        { "value": "week", "label": "Within a week" },
+        { "value": "flexible", "label": "Flexible" }
+      ]
+    },
+    {
+      "id": "timeline", "type": "multiple_choice", "stage": "timeline", "order": 2, "required": true,
+      "text": "When do you need this delivered?",
+      "showIf": {
+        "not": {
+          "all": [
+            { "questionId": "video_style", "op": "includes", "value": "social" },
+            { "not": { "any": [
+              { "questionId": "video_style", "op": "includes", "value": "brand_film" },
+              { "questionId": "video_style", "op": "includes", "value": "commercial" },
+              { "questionId": "video_style", "op": "includes", "value": "documentary" }
+            ] } }
+          ]
+        }
+      },
+      "options": [
+        { "value": "rush", "label": "Within 2 weeks" },
+        { "value": "month", "label": "Within a month" },
+        { "value": "quarter", "label": "In the next few months" },
+        { "value": "flexible", "label": "Flexible" }
+      ]
+    },
+    {
+      "id": "decision_maker", "type": "yes_no", "stage": "qualification", "order": 1, "required": true,
+      "text": "Are you the final decision maker for this project?"
+    },
+    {
+      "id": "worked_with_agency", "type": "multiple_choice", "stage": "qualification", "order": 2, "required": true,
+      "text": "Have you worked with a creative agency before?",
+      "options": [
+        { "value": "never", "label": "First time" },
+        { "value": "once", "label": "Once or twice" },
+        { "value": "regularly", "label": "We do this regularly" },
+        { "value": "returning", "label": "We've worked with YC Studios before" }
+      ]
+    }
+  ],
+  "profile": {
+    "indicators": [
+      {
+        "questionId": "org_type", "weight": 3,
+        "pointsByValue": { "individual": 0, "small_business": 1, "company": 2, "enterprise": 4, "nonprofit": 1, "private_school": 2 }
+      },
+      {
+        "questionId": "quality_expectation", "weight": 2,
+        "pointsByValue": { "simple": 0, "professional": 1, "premium": 3, "luxury": 5 }
+      },
+      {
+        "questionId": "timeline", "weight": 1,
+        "pointsByValue": { "rush": 2, "month": 1, "quarter": 0, "flexible": 0 }
+      },
+      {
+        "questionId": "timeline_social", "weight": 1,
+        "pointsByValue": { "next_day": 2, "three_day": 1, "week": 0, "flexible": 0 }
+      },
+      {
+        "questionId": "worked_with_agency", "weight": 1,
+        "pointsByValue": { "never": 0, "once": 1, "regularly": 3, "returning": 2 }
+      }
+    ],
+    "tiers": [
+      { "id": "entry", "label": "Entry", "minScore": 0 },
+      { "id": "professional", "label": "Professional", "minScore": 8 },
+      { "id": "premium", "label": "Premium", "minScore": 14 },
+      { "id": "enterprise", "label": "Enterprise", "minScore": 20 }
+    ]
+  },
+  "packages": [
+    {
+      "id": "starter_video", "name": "Starter Video Package",
+      "description": "A focused, efficient production for a single clear deliverable.",
+      "serviceIds": ["video"], "complexityMin": 0,
+      "baseRange": { "min": 1500, "max": 2500 },
+      "deliverables": ["1 shoot day", "1 finished video (up to 90s)", "Basic color and sound", "2 revision rounds"],
+      "nextSteps": ["Book a 20-minute discovery call", "Receive a detailed proposal within 48 hours"]
+    },
+    {
+      "id": "professional_video", "name": "Professional Video Package",
+      "description": "Full production with dedicated crew, planning, and multi-format delivery.",
+      "serviceIds": ["video"], "complexityMin": 6,
+      "baseRange": { "min": 5000, "max": 8000 },
+      "deliverables": ["Pre-production planning", "Up to 2 shoot days", "1 hero video + 3 social cutdowns", "Professional color grade and sound mix", "3 revision rounds"],
+      "nextSteps": ["Book a creative planning session", "Receive a detailed proposal within 48 hours"]
+    },
+    {
+      "id": "signature_video", "name": "Signature Cinematic Package",
+      "description": "Flagship cinematic production — full creative direction, cinema cameras, original treatment.",
+      "serviceIds": ["video"], "complexityMin": 12,
+      "baseRange": { "min": 15000, "max": 25000 },
+      "deliverables": ["Creative treatment and storyboards", "Multi-day cinema production (Canon R5 C / cinema glass)", "Hero film + full content suite", "Licensed or original music", "Dedicated producer"],
+      "nextSteps": ["Schedule an in-person creative consultation", "Receive a custom treatment within one week"]
+    }
+  ],
+  "rules": [
+    {
+      "id": "next_day_multiplier", "label": "Next-day turnaround (+40%)", "priority": 8,
+      "when": { "questionId": "timeline_social", "op": "eq", "value": "next_day" },
+      "effect": { "type": "multiply", "factor": 1.4 }
+    },
+    {
+      "id": "three_day_multiplier", "label": "3-day turnaround (+15%)", "priority": 9,
+      "when": { "questionId": "timeline_social", "op": "eq", "value": "three_day" },
+      "effect": { "type": "multiply", "factor": 1.15 }
+    },
+    {
+      "id": "next_day_step", "label": "Next-day turnaround — immediate scheduling", "priority": 65,
+      "when": { "questionId": "timeline_social", "op": "eq", "value": "next_day" },
+      "effect": { "type": "addNextStep", "text": "We'll confirm availability within the hour" }
+    },
+    {
+      "id": "rush_multiplier", "label": "Rush delivery (+25%)", "priority": 10,
+      "when": { "questionId": "timeline", "op": "eq", "value": "rush" },
+      "effect": { "type": "multiply", "factor": 1.25 }
+    },
+    {
+      "id": "enterprise_multiplier", "label": "Enterprise client scope (+30%)", "priority": 20,
+      "when": { "questionId": "org_type", "op": "eq", "value": "enterprise" },
+      "effect": { "type": "multiply", "factor": 1.3 }
+    },
+    {
+      "id": "broadcast_multiplier", "label": "Broadcast licensing and deliverables (+40%)", "priority": 30,
+      "when": { "questionId": "commercial_broadcast", "op": "eq", "value": true },
+      "effect": { "type": "multiply", "factor": 1.4 }
+    },
+    {
+      "id": "extra_shoot_days", "label": "Extended production: 4+ shoot days (+$2,000)", "priority": 40,
+      "when": { "questionId": "shoot_days", "op": "gte", "value": 4 },
+      "effect": { "type": "add", "amount": 2000 }
+    },
+    {
+      "id": "returning_discount", "label": "Returning client appreciation (-$500)", "priority": 50,
+      "when": { "questionId": "worked_with_agency", "op": "eq", "value": "returning" },
+      "effect": { "type": "add", "amount": -500 }
+    },
+    {
+      "id": "nonprofit_discount", "label": "Nonprofit rate (-15%)", "priority": 15,
+      "when": { "questionId": "org_type", "op": "eq", "value": "nonprofit" },
+      "effect": { "type": "multiply", "factor": 0.85 }
+    },
+    {
+      "id": "private_school_floor", "label": "Private school engagement minimum ($7,500)", "priority": 60,
+      "when": { "questionId": "org_type", "op": "eq", "value": "private_school" },
+      "effect": { "type": "floor", "amount": 7500 }
+    },
+    {
+      "id": "luxury_no_starter", "label": "Luxury expectations — Starter not offered", "priority": 5,
+      "when": { "questionId": "quality_expectation", "op": "in", "value": ["premium", "luxury"] },
+      "effect": { "type": "excludePackage", "packageId": "starter_video" }
+    },
+    {
+      "id": "enterprise_no_starter", "label": "Enterprise clients — Starter not offered", "priority": 6,
+      "when": { "op": "profileTier", "value": "enterprise" },
+      "effect": { "type": "excludePackage", "packageId": "starter_video" }
+    },
+    {
+      "id": "rush_next_step", "label": "Rush timeline — priority scheduling", "priority": 70,
+      "when": { "questionId": "timeline", "op": "eq", "value": "rush" },
+      "effect": { "type": "addNextStep", "text": "We'll confirm crew availability within 24 hours" }
+    },
+    {
+      "id": "not_decision_maker", "label": "Stakeholder deck for decision makers", "priority": 80,
+      "when": { "questionId": "decision_maker", "op": "eq", "value": false },
+      "effect": { "type": "addDeliverable", "text": "Shareable proposal deck for your stakeholders" }
+    }
+  ]
+}

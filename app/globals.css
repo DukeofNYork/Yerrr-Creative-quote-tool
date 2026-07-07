@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #fcfbf8;
+  --surface: #ffffff;
+  --ink: #1a1611;
+  --ink-soft: #46403a;
+  --muted: #7a7266;
+  --faint: #b5ac9d;
+  --line: #eae4da;
+  --line-soft: #f1ede5;
+  --rec: #c6362b;
+  --tint: #f6f3ec;
+  --wood: #ce9a5f;
+  --wood-seam: rgba(107, 62, 24, 0.3);
+  --wood-shadow: rgba(96, 53, 16, 0.35);
+  --window-light: rgba(255, 240, 214, 0.3);
+  --sticky-a: #f2cc5b;
+  --sticky-b: #ebbf47;
+  --dim: #5a3410;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-rec: var(--rec);
+  --color-tint: var(--tint);
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11";
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 28;
+  letter-spacing: -0.01em;
+}
+
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.rec-dot { animation: rec-pulse 1.6s ease-in-out infinite; }
+
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.step-in { animation: step-in 0.28s ease-out both; }
+.step-in-1 { animation: step-in 0.28s ease-out 0.05s both; }
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-in { animation: page-in 0.26s ease-out both; }
+
+@keyframes steam {
+  0% { transform: translateY(4px) scaleX(1); opacity: 0; }
+  30% { opacity: 0.65; }
+  100% { transform: translateY(-36px) scaleX(1.7); opacity: 0; }
+}
+.steam { animation: steam 3.4s ease-out infinite; }
+
+.desk-wood {
+  background-color: var(--wood);
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 232px,
+    var(--wood-seam) 232px,
+    var(--wood-seam) 235px
+  );
+}
+
+.notebook-shell {
+  min-height: calc(100vh - 24px);
+}
+@media (min-width: 768px) {
+  .notebook-shell {
+    min-height: 0;
+    box-shadow: 16px 18px 0 rgba(96, 53, 16, 0.4);
+  }
+}
+
+.notebook-lines {
+  background-image: repeating-linear-gradient(
+    transparent 0px,
+    transparent 30px,
+    var(--line) 30px,
+    var(--line) 31px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec-dot, .step-in, .step-in-1, .page-in, .steam { animation: none; }
+}
+
+input, select, textarea { font: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
