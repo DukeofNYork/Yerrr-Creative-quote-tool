@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { BusinessConfig } from '@/lib/engine/types';
 import CatalogPanel from '@/components/admin/CatalogPanel';
 import QuestionsPanel from '@/components/admin/QuestionsPanel';
 import PackagesPanel from '@/components/admin/PackagesPanel';
 import RulesPanel from '@/components/admin/RulesPanel';
 import LeadsPanel from '@/components/admin/LeadsPanel';
+import UsersPanel from '@/components/admin/UsersPanel';
 import { btnPrimary } from '@/components/admin/ui';
 
-const TABS = [
+const BASE_TABS = [
   { id: 'catalog', label: 'Industries & services' },
   { id: 'questions', label: 'Questions' },
   { id: 'packages', label: 'Packages & estimates' },
@@ -18,9 +20,21 @@ const TABS = [
   { id: 'leads', label: 'Leads' },
 ] as const;
 
-type TabId = (typeof TABS)[number]['id'];
+const OWNER_EXTRA_TAB = { id: 'users', label: 'Users' } as const;
+
+type TabId =
+  | (typeof BASE_TABS)[number]['id']
+  | typeof OWNER_EXTRA_TAB.id;
+
+interface Me {
+  id: string;
+  username: string;
+  role: 'owner' | 'user';
+}
 
 export default function AdminPage() {
+  const router = useRouter();
+  const [me, setMe] = useState<Me | null>(null);
   const [config, setConfig] = useState<BusinessConfig | null>(null);
   const [tab, setTab] = useState<TabId>('questions');
   const [dirty, setDirty] = useState(false);
@@ -28,7 +42,18 @@ export default function AdminPage() {
   const [errors, setErrors] = useState<string[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
 
+  async function signOut() {
+    await fetch('/api/admin/logout', { method: 'POST' });
+    router.replace('/admin/login');
+    router.refresh();
+  }
+
   useEffect(() => {
+    fetch('/api/admin/me')
+      .then(r => r.json())
+      .then(body => {
+        if (body?.ok) setMe(body.user);
+      });
     fetch('/api/config').then(r => r.json()).then(setConfig);
   }, []);
 
@@ -62,6 +87,9 @@ export default function AdminPage() {
     return <main className="p-10 text-muted">Loading…</main>;
   }
 
+  const tabs = me?.role === 'owner' ? [...BASE_TABS, OWNER_EXTRA_TAB] : BASE_TABS;
+  const discoverHref = me && me.role === 'user' ? `/discover?u=${me.id}` : '/discover';
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col md:flex-row">
       {/* Sidebar */}
@@ -71,7 +99,7 @@ export default function AdminPage() {
           {config.business.name}
         </Link>
         <div className="flex gap-1 overflow-x-auto md:flex-col">
-          {TABS.map(t => (
+          {tabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
@@ -84,11 +112,21 @@ export default function AdminPage() {
           ))}
         </div>
         <div className="mt-4 flex flex-col gap-2 md:mt-auto">
-          <Link href="/discover" className="px-3 text-sm text-muted underline underline-offset-4" target="_blank">
+          <Link href={discoverHref} className="px-3 text-sm text-muted underline underline-offset-4" target="_blank">
             Preview customer flow ↗
           </Link>
           <button className={btnPrimary} disabled={!dirty || saving} onClick={save}>
             {saving ? 'Saving…' : savedFlash ? 'Saved ✓' : dirty ? 'Save changes' : 'All changes saved'}
+          </button>
+          {me && (
+            <div className="px-3 pt-2 text-xs text-muted">
+              <div>Signed in as</div>
+              <div className="mt-0.5 truncate text-ink">{me.username}</div>
+              <div className="mt-0.5 uppercase tracking-widest">{me.role}</div>
+            </div>
+          )}
+          <button onClick={signOut} className="px-3 text-left text-sm text-muted underline underline-offset-4">
+            Sign out
           </button>
         </div>
       </aside>
@@ -103,11 +141,31 @@ export default function AdminPage() {
             </ul>
           </div>
         )}
+        {me?.role === 'user' && tab !== 'leads' && tab !== 'users' && (
+          <div className="mb-6 rounded-xl border border-line bg-surface p-4 text-sm">
+            <p className="mb-1 font-medium">Your customer flow lives here:</p>
+            <div className="flex flex-wrap items-center gap-2 text-muted">
+              <code className="rounded bg-line/40 px-2 py-1 text-ink">
+                {typeof window !== 'undefined' ? `${window.location.origin}/discover?u=${me.id}` : `/discover?u=${me.id}`}
+              </code>
+              <button
+                onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/discover?u=${me.id}`)}
+                className="underline underline-offset-4 hover:text-ink"
+              >
+                Copy
+              </button>
+              <Link href={discoverHref} target="_blank" className="underline underline-offset-4 hover:text-ink">
+                Open ↗
+              </Link>
+            </div>
+          </div>
+        )}
         {tab === 'catalog' && <CatalogPanel config={config} update={update} />}
         {tab === 'questions' && <QuestionsPanel config={config} update={update} />}
         {tab === 'packages' && <PackagesPanel config={config} update={update} />}
         {tab === 'rules' && <RulesPanel config={config} update={update} />}
         {tab === 'leads' && <LeadsPanel />}
+        {tab === 'users' && me?.role === 'owner' && <UsersPanel />}
       </section>
     </main>
   );

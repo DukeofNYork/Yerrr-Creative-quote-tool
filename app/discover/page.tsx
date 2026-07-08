@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  AnswerValue, BusinessConfig, DiscoveryResult, Question, SessionAnswers,
+  AnswerValue, BusinessConfig, DiscoveryResult, Question, QuestionOption, SessionAnswers,
 } from '@/lib/engine/types';
 import { nextQuestion, progress, visibleQuestions } from '@/lib/engine/flow';
 import { generateResult } from '@/lib/engine/recommend';
@@ -24,9 +24,14 @@ export default function DiscoverPage() {
   const [answeredOrder, setAnsweredOrder] = useState<string[]>([]);
   const [contact, setContact] = useState({ name: '', email: '', phone: '' });
   const [result, setResult] = useState<DiscoveryResult | null>(null);
+  const [workspaceUserId, setWorkspaceUserId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    fetch('/api/config')
+    const params = new URLSearchParams(window.location.search);
+    const u = params.get('u') ?? undefined;
+    setWorkspaceUserId(u);
+    const configUrl = u ? `/api/config?u=${encodeURIComponent(u)}` : '/api/config';
+    fetch(configUrl)
       .then(r => r.json())
       .then((c: BusinessConfig) => {
         setConfig(c);
@@ -126,6 +131,7 @@ export default function DiscoverPage() {
           packageId: r.package.id,
           packageName: r.package.name,
         },
+        workspaceUserId,
       }),
     }).catch(() => {});
   }
@@ -446,6 +452,114 @@ function ChoiceRow({
   );
 }
 
+function hasPreview(o: QuestionOption): boolean {
+  return !!(o.description?.trim() || (o.previewBullets && o.previewBullets.some(b => b.trim())));
+}
+
+function ExpandableChoiceRow({
+  option,
+  selected,
+  expanded,
+  onToggle,
+  onSelect,
+}: {
+  option: QuestionOption;
+  selected: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  onSelect: () => void;
+}) {
+  const active = selected || expanded;
+  const softColor = selected ? '#C9C1B4' : 'var(--muted)';
+  return (
+    <div
+      style={{
+        borderRadius: 4,
+        border: active ? '2px solid var(--ink)' : '2px solid transparent',
+        background: selected ? 'var(--ink)' : 'transparent',
+        color: selected ? 'var(--paper)' : 'var(--ink)',
+        boxShadow: active ? '3px 3px 0 rgba(26,22,17,.18)' : 'inset 0 -1px 0 var(--line)',
+        overflow: 'hidden',
+        transition: 'border-color .15s ease',
+      }}
+    >
+      <button
+        onClick={onToggle}
+        className="cursor-pointer text-left transition-[transform] active:translate-y-px"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          width: '100%',
+          padding: '11px 14px',
+          background: 'transparent',
+          color: 'inherit',
+          border: 'none',
+          fontFamily: 'inherit',
+        }}
+        aria-expanded={expanded}
+      >
+        <span style={{ flex: 1, fontSize: '15px', fontWeight: 600 }}>{option.label}</span>
+        <span style={{ fontFamily: mono, fontSize: '13px', opacity: 0.55 }}>{expanded ? '−' : '+'}</span>
+      </button>
+      {expanded && (
+        <div style={{ padding: '0 14px 14px' }}>
+          {option.description && (
+            <p style={{ fontSize: '13px', lineHeight: 1.5, margin: '4px 0 0', color: softColor }}>
+              {option.description}
+            </p>
+          )}
+          {option.previewBullets && option.previewBullets.some(b => b.trim()) && (
+            <>
+              {option.previewTitle && (
+                <div
+                  style={{
+                    fontFamily: mono,
+                    fontSize: '10px',
+                    letterSpacing: '.16em',
+                    color: softColor,
+                    marginTop: 14,
+                    marginBottom: 6,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {option.previewTitle}
+                </div>
+              )}
+              <ul style={{ margin: option.previewTitle ? 0 : '12px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {option.previewBullets.filter(b => b.trim()).map((b, i) => (
+                  <li key={i} style={{ display: 'flex', gap: 10, fontSize: '13px', lineHeight: 1.45 }}>
+                    <span style={{ color: softColor }}>—</span>
+                    <span>{b}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <button
+            onClick={onSelect}
+            className="cursor-pointer transition-[transform] active:translate-y-px"
+            style={{
+              marginTop: 14,
+              padding: '9px 18px',
+              border: 'none',
+              borderRadius: 3,
+              fontFamily: 'inherit',
+              fontSize: 13,
+              fontWeight: 600,
+              background: selected ? 'var(--paper)' : 'var(--ink)',
+              color: selected ? 'var(--ink)' : 'var(--paper)',
+              boxShadow: '3px 3px 0 rgba(26,22,17,.2)',
+            }}
+          >
+            Select this
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────── Question renderer ─────────── */
 
 function QuestionStep({ q, onAnswer, onSkip }: {
@@ -475,6 +589,7 @@ function QuestionInput({ q, onAnswer }: { q: Question; onAnswer: (v: AnswerValue
   const [text, setText] = useState('');
   const [num, setNum] = useState<number>(q.min ?? 0);
   const [selected, setSelected] = useState<string | number | boolean | null>(null);
+  const [expandedValue, setExpandedValue] = useState<string | null>(null);
 
   const pickAuto = (v: AnswerValue, marker: string | number | boolean) => {
     setSelected(marker);
@@ -487,12 +602,23 @@ function QuestionInput({ q, onAnswer }: { q: Question; onAnswer: (v: AnswerValue
       return (
         <div className="flex flex-col gap-1.5">
           {q.options?.map(o => (
-            <ChoiceRow
-              key={o.value}
-              label={o.label}
-              selected={selected === o.value}
-              onClick={() => pickAuto(o.value, o.value)}
-            />
+            hasPreview(o) ? (
+              <ExpandableChoiceRow
+                key={o.value}
+                option={o}
+                selected={selected === o.value}
+                expanded={expandedValue === o.value}
+                onToggle={() => setExpandedValue(v => (v === o.value ? null : o.value))}
+                onSelect={() => pickAuto(o.value, o.value)}
+              />
+            ) : (
+              <ChoiceRow
+                key={o.value}
+                label={o.label}
+                selected={selected === o.value}
+                onClick={() => pickAuto(o.value, o.value)}
+              />
+            )
           ))}
         </div>
       );

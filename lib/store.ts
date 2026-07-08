@@ -4,6 +4,15 @@ import defaultConfigJson from '@/data/config.json';
 
 const defaultConfig = defaultConfigJson as unknown as BusinessConfig;
 
+export const OWNER_USER_ID = 'owner';
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  passwordHash: string;
+  createdAt: string;
+}
+
 export interface Lead {
   id: string;
   createdAt: string;
@@ -13,6 +22,8 @@ export interface Lead {
     packageId: string;
     packageName: string;
   };
+  /** Which user's workspace/discover flow produced this lead. Missing = owner (legacy). */
+  workspaceUserId?: string;
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,51 +35,83 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-export async function readConfig(): Promise<BusinessConfig> {
+function configKeyFor(userId: string): string {
+  return userId === OWNER_USER_ID ? 'main' : `workspace:${userId}`;
+}
+
+export async function readConfig(userId: string = OWNER_USER_ID): Promise<BusinessConfig> {
+  const key = configKeyFor(userId);
   const { data, error } = await supabase
     .from('app_config')
     .select('config')
-    .eq('id', 'main')
+    .eq('id', key)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   if (!data) {
-    await writeConfig(defaultConfig);
+    await writeConfig(defaultConfig, userId);
     return defaultConfig;
   }
-
   return data.config as BusinessConfig;
 }
 
-export async function writeConfig(config: BusinessConfig): Promise<void> {
+export async function writeConfig(config: BusinessConfig, userId: string = OWNER_USER_ID): Promise<void> {
+  const key = configKeyFor(userId);
   const { error } = await supabase
     .from('app_config')
-    .upsert({
-      id: 'main',
-      config,
-      updated_at: new Date().toISOString(),
-    });
-
-  if (error) {
-    throw new Error(error.message);
-  }
+    .upsert({ id: key, config, updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
 }
 
-export async function readLeads(): Promise<Lead[]> {
+const USERS_KEY = 'users';
+
+export async function readUsers(): Promise<AdminUser[]> {
+  const { data, error } = await supabase
+    .from('app_config')
+    .select('config')
+    .eq('id', USERS_KEY)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.config as AdminUser[] | undefined) ?? [];
+}
+
+export async function writeUsers(users: AdminUser[]): Promise<void> {
+  const { error } = await supabase
+    .from('app_config')
+    .upsert({ id: USERS_KEY, config: users, updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+
+export async function findUserByUsername(username: string): Promise<AdminUser | undefined> {
+  const users = await readUsers();
+  const needle = username.trim().toLowerCase();
+  return users.find(u => u.username.toLowerCase() === needle);
+}
+
+export async function findUserById(id: string): Promise<AdminUser | undefined> {
+  const users = await readUsers();
+  return users.find(u => u.id === id);
+}
+
+export async function createUser(user: AdminUser): Promise<void> {
+  const users = await readUsers();
+  users.push(user);
+  await writeUsers(users);
+}
+
+export async function readLeads(userId?: string): Promise<Lead[]> {
   const { data, error } = await supabase
     .from('leads')
     .select('data')
     .order('created_at', { ascending: false });
-
   if (error) {
     console.error(error.message);
     return [];
   }
-
-  return (data ?? []).map(row => row.data as Lead);
+  const all = (data ?? []).map(row => row.data as Lead);
+  if (!userId) return all;
+  return all.filter(lead => (lead.workspaceUserId ?? OWNER_USER_ID) === userId);
 }
 
 export async function appendLead(lead: Lead): Promise<void> {
@@ -79,8 +122,5 @@ export async function appendLead(lead: Lead): Promise<void> {
       data: lead,
       created_at: lead.createdAt,
     });
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 }

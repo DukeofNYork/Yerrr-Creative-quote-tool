@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import type { BusinessConfig, Question, QuestionType } from '@/lib/engine/types';
 import {
-  btnDanger, btnGhost, Card, CheckboxGroup, Field, inputCls, PanelHeader, slugify,
+  btnDanger, btnGhost, Card, CheckboxGroup, Field, inputCls, PanelHeader, slugify, StringListEditor,
 } from './ui';
+import type { QuestionOption } from '@/lib/engine/types';
 
 const TYPES: QuestionType[] = [
   'multiple_choice', 'multi_select', 'yes_no', 'dropdown', 'slider',
@@ -92,34 +93,63 @@ export default function QuestionsPanel({
                 </div>
 
                 {HAS_OPTIONS.includes(q.type) && (
-                  <Field label="Options" hint="Complexity points feed the project score, which selects the base package.">
-                    <div className="flex flex-col gap-2">
-                      <div className="grid grid-cols-[1fr_90px_32px] gap-2 text-xs text-muted">
-                        <span>Label</span><span>Complexity</span><span />
-                      </div>
-                      {(q.options ?? []).map((o, i) => (
-                        <div key={i} className="grid grid-cols-[1fr_90px_32px] gap-2">
-                          <input
-                            className={inputCls}
-                            value={o.label}
-                            onChange={e => {
-                              const options = (q.options ?? []).map((x, j) =>
-                                j === i ? { ...x, label: e.target.value, value: x.value || slugify(e.target.value) } : x);
-                              setQuestion(q.id, { options });
-                            }}
-                          />
-                          <input
-                            className={inputCls}
-                            type="number"
-                            value={o.complexity ?? 0}
-                            onChange={e => {
-                              const options = (q.options ?? []).map((x, j) => (j === i ? { ...x, complexity: Number(e.target.value) } : x));
-                              setQuestion(q.id, { options });
-                            }}
-                          />
-                          <button className={btnDanger} onClick={() => setQuestion(q.id, { options: (q.options ?? []).filter((_, j) => j !== i) })}>✕</button>
-                        </div>
-                      ))}
+                  <Field label="Options" hint="Complexity points feed the project score. Add a description or preview bullets to make the option expandable in the customer flow.">
+                    <div className="flex flex-col gap-3">
+                      {(q.options ?? []).map((o, i) => {
+                        const patch = (next: Partial<QuestionOption>) => {
+                          const options = (q.options ?? []).map((x, j) => (j === i ? { ...x, ...next } : x));
+                          setQuestion(q.id, { options });
+                        };
+                        return (
+                          <div key={i} className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3">
+                            <div className="grid grid-cols-[1fr_90px_32px] gap-2">
+                              <input
+                                className={inputCls}
+                                placeholder="Option label"
+                                value={o.label}
+                                onChange={e => patch({ label: e.target.value, value: o.value || slugify(e.target.value) })}
+                              />
+                              <input
+                                className={inputCls}
+                                type="number"
+                                placeholder="Complexity"
+                                value={o.complexity ?? 0}
+                                onChange={e => patch({ complexity: Number(e.target.value) })}
+                              />
+                              <button
+                                className={btnDanger}
+                                aria-label="Remove option"
+                                onClick={() => setQuestion(q.id, { options: (q.options ?? []).filter((_, j) => j !== i) })}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <Field label="Expanded description" hint="Optional. Shown when the customer taps to expand this option.">
+                              <textarea
+                                className={`${inputCls} min-h-20`}
+                                placeholder="What does picking this option mean? What will they get?"
+                                value={o.description ?? ''}
+                                onChange={e => patch({ description: e.target.value || undefined })}
+                              />
+                            </Field>
+                            <Field label="Preview title" hint="Optional. Small heading shown above the preview bullets, e.g. “You'll get”.">
+                              <input
+                                className={inputCls}
+                                placeholder="You'll get"
+                                value={o.previewTitle ?? ''}
+                                onChange={e => patch({ previewTitle: e.target.value || undefined })}
+                              />
+                            </Field>
+                            <Field label="Preview bullets" hint="Optional. Short bullets that give a taste of what's included.">
+                              <StringListEditor
+                                items={o.previewBullets ?? []}
+                                onChange={items => patch({ previewBullets: items.length ? items : undefined })}
+                                placeholder="e.g. Two-hour production block"
+                              />
+                            </Field>
+                          </div>
+                        );
+                      })}
                       <button
                         className={`${btnGhost} self-start`}
                         onClick={() => setQuestion(q.id, {

@@ -57,6 +57,12 @@ export interface QuestionOption {
   label: string;
   /** Points this answer contributes to project complexity (scored questions) */
   complexity?: number;
+  /** Longer copy shown when the option expands in the customer flow */
+  description?: string;
+  /** Optional heading for the preview bullet list (e.g. "You'll get") */
+  previewTitle?: string;
+  /** Bullet list shown alongside the description in the expanded card */
+  previewBullets?: string[];
 }
 
 export interface Question {
