@@ -1,10 +1,6 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import { createClient } from '@supabase/supabase-js';
 import type { BusinessConfig, DiscoveryResult, SessionAnswers } from './engine/types';
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
-const LEADS_PATH = path.join(DATA_DIR, 'leads.json');
+import defaultConfig from '@/data/config.json';
 
 export interface Lead {
   id: string;
@@ -17,24 +13,65 @@ export interface Lead {
   };
 }
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables.');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 export async function readConfig(): Promise<BusinessConfig> {
-  return JSON.parse(await fs.readFile(CONFIG_PATH, 'utf8'));
+  const { data, error } = await supabase
+    .from('app_config')
+    .select('config')
+    .eq('id', 'main')
+    .single();
+
+  if (error || !data) {
+    await writeConfig(defaultConfig as BusinessConfig);
+    return defaultConfig as BusinessConfig;
+  }
+
+  return data.config as BusinessConfig;
 }
 
 export async function writeConfig(config: BusinessConfig): Promise<void> {
-  await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
-}
+  const { error } = await supabase
+    .from('app_config')
+    .upsert({
+      id: 'main',
+      config,
+      updated_at: new Date().toISOString(),
+    });
 
-export async function readLeads(): Promise<Lead[]> {
-  try {
-    return JSON.parse(await fs.readFile(LEADS_PATH, 'utf8'));
-  } catch {
-    return [];
+  if (error) {
+    throw new Error(error.message);
   }
 }
 
+export async function readLeads(): Promise<Lead[]> {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('data')
+    .order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+
+  return data.map(row => row.data as Lead);
+}
+
 export async function appendLead(lead: Lead): Promise<void> {
-  const leads = await readLeads();
-  leads.unshift(lead);
-  await fs.writeFile(LEADS_PATH, JSON.stringify(leads, null, 2), 'utf8');
+  const { error } = await supabase
+    .from('leads')
+    .insert({
+      id: lead.id,
+      data: lead,
+      created_at: lead.createdAt,
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
