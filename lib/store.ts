@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { BusinessConfig, DiscoveryResult, SessionAnswers } from './engine/types';
-import defaultConfig from '@/data/config.json';
+import defaultConfigJson from '@/data/config.json';
+
+const defaultConfig = defaultConfigJson as unknown as BusinessConfig;
 
 export interface Lead {
   id: string;
@@ -27,11 +29,15 @@ export async function readConfig(): Promise<BusinessConfig> {
     .from('app_config')
     .select('config')
     .eq('id', 'main')
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    await writeConfig(defaultConfig as BusinessConfig);
-    return defaultConfig as BusinessConfig;
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    await writeConfig(defaultConfig);
+    return defaultConfig;
   }
 
   return data.config as BusinessConfig;
@@ -57,9 +63,12 @@ export async function readLeads(): Promise<Lead[]> {
     .select('data')
     .order('created_at', { ascending: false });
 
-  if (error || !data) return [];
+  if (error) {
+    console.error(error.message);
+    return [];
+  }
 
-  return data.map(row => row.data as Lead);
+  return (data ?? []).map(row => row.data as Lead);
 }
 
 export async function appendLead(lead: Lead): Promise<void> {
