@@ -1,0 +1,262 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden master — real config.json > bare_video 1`] = `
+{
+  "complexity": 0,
+  "isComplete": false,
+  "nextQuestionId": "org_type",
+  "profile": {
+    "score": 0,
+    "tierId": "entry",
+    "tierLabel": "Entry",
+  },
+  "result": {
+    "appliedRuleIds": [],
+    "complexityScore": 0,
+    "deliverables": [
+      "1 shoot day",
+      "1 finished video (up to 90s)",
+      "Basic color and sound",
+      "2 revision rounds",
+    ],
+    "estimate": {
+      "max": 2500,
+      "min": 1500,
+    },
+    "nextSteps": [
+      "Book a 20-minute discovery call",
+      "Receive a detailed proposal within 48 hours",
+    ],
+    "packageId": "starter_video",
+    "profileTier": "entry",
+  },
+  "visibleQuestionIds": [
+    "org_type",
+    "goal",
+    "video_style",
+    "shoot_days",
+    "quality_expectation",
+    "timeline",
+    "decision_maker",
+    "worked_with_agency",
+  ],
+}
+`;
+
+exports[`golden master — real config.json > enterprise_broadcast_rush 1`] = `
+{
+  "complexity": 15,
+  "isComplete": true,
+  "nextQuestionId": null,
+  "profile": {
+    "score": 23,
+    "tierId": "enterprise",
+    "tierLabel": "Enterprise",
+  },
+  "result": {
+    "appliedRuleIds": [
+      "luxury_no_starter",
+      "enterprise_no_starter",
+      "rush_multiplier",
+      "enterprise_multiplier",
+      "broadcast_multiplier",
+      "extra_shoot_days",
+      "rush_next_step",
+      "not_decision_maker",
+    ],
+    "complexityScore": 15,
+    "deliverables": [
+      "Creative treatment and storyboards",
+      "Multi-day cinema production (Canon R5 C / cinema glass)",
+      "Hero film + full content suite",
+      "Licensed or original music",
+      "Dedicated producer",
+      "Shareable proposal deck for your stakeholders",
+    ],
+    "estimate": {
+      "max": 58900,
+      "min": 36150,
+    },
+    "nextSteps": [
+      "Schedule an in-person creative consultation",
+      "Receive a custom treatment within one week",
+      "We'll confirm crew availability within 24 hours",
+    ],
+    "packageId": "signature_video",
+    "profileTier": "enterprise",
+  },
+  "visibleQuestionIds": [
+    "org_type",
+    "goal",
+    "video_style",
+    "commercial_broadcast",
+    "shoot_days",
+    "quality_expectation",
+    "timeline",
+    "decision_maker",
+    "worked_with_agency",
+  ],
+}
+`;
+
+exports[`golden master — real config.json > nonprofit_social_simple 1`] = `
+{
+  "complexity": 2,
+  "isComplete": true,
+  "nextQuestionId": null,
+  "profile": {
+    "score": 3,
+    "tierId": "entry",
+    "tierLabel": "Entry",
+  },
+  "result": {
+    "appliedRuleIds": [
+      "nonprofit_discount",
+    ],
+    "complexityScore": 2,
+    "deliverables": [
+      "1 shoot day",
+      "1 finished video (up to 90s)",
+      "Basic color and sound",
+      "2 revision rounds",
+    ],
+    "estimate": {
+      "max": 2150,
+      "min": 1300,
+    },
+    "nextSteps": [
+      "Book a 20-minute discovery call",
+      "Receive a detailed proposal within 48 hours",
+    ],
+    "packageId": "starter_video",
+    "profileTier": "entry",
+  },
+  "visibleQuestionIds": [
+    "org_type",
+    "goal",
+    "video_style",
+    "shoot_days",
+    "quality_expectation",
+    "timeline_social",
+    "decision_maker",
+    "worked_with_agency",
+  ],
+}
+`;
+
+exports[`golden master — real config.json > photo_no_package 1`] = `
+{
+  "complexity": 0,
+  "isComplete": false,
+  "nextQuestionId": "org_type",
+  "profile": {
+    "score": 0,
+    "tierId": "entry",
+    "tierLabel": "Entry",
+  },
+  "result": {
+    "error": "No package matches this session — check package complexity bands.",
+  },
+  "visibleQuestionIds": [
+    "org_type",
+    "goal",
+    "quality_expectation",
+    "timeline",
+    "decision_maker",
+    "worked_with_agency",
+  ],
+}
+`;
+
+exports[`golden master — real config.json > private_school_floor 1`] = `
+{
+  "complexity": 3,
+  "isComplete": true,
+  "nextQuestionId": null,
+  "profile": {
+    "score": 6,
+    "tierId": "entry",
+    "tierLabel": "Entry",
+  },
+  "result": {
+    "appliedRuleIds": [
+      "private_school_floor",
+    ],
+    "complexityScore": 3,
+    "deliverables": [
+      "1 shoot day",
+      "1 finished video (up to 90s)",
+      "Basic color and sound",
+      "2 revision rounds",
+    ],
+    "estimate": {
+      "max": 8250,
+      "min": 7500,
+    },
+    "nextSteps": [
+      "Book a 20-minute discovery call",
+      "Receive a detailed proposal within 48 hours",
+    ],
+    "packageId": "starter_video",
+    "profileTier": "entry",
+  },
+  "visibleQuestionIds": [
+    "org_type",
+    "goal",
+    "video_style",
+    "shoot_days",
+    "quality_expectation",
+    "timeline_social",
+    "decision_maker",
+    "worked_with_agency",
+  ],
+}
+`;
+
+exports[`golden master — real config.json > returning_next_day 1`] = `
+{
+  "complexity": 5,
+  "isComplete": true,
+  "nextQuestionId": null,
+  "profile": {
+    "score": 9,
+    "tierId": "professional",
+    "tierLabel": "Professional",
+  },
+  "result": {
+    "appliedRuleIds": [
+      "next_day_multiplier",
+      "returning_discount",
+      "next_day_step",
+    ],
+    "complexityScore": 5,
+    "deliverables": [
+      "1 shoot day",
+      "1 finished video (up to 90s)",
+      "Basic color and sound",
+      "2 revision rounds",
+    ],
+    "estimate": {
+      "max": 3000,
+      "min": 1600,
+    },
+    "nextSteps": [
+      "Book a 20-minute discovery call",
+      "Receive a detailed proposal within 48 hours",
+      "We'll confirm availability within the hour",
+    ],
+    "packageId": "starter_video",
+    "profileTier": "professional",
+  },
+  "visibleQuestionIds": [
+    "org_type",
+    "goal",
+    "video_style",
+    "shoot_days",
+    "quality_expectation",
+    "timeline_social",
+    "decision_maker",
+    "worked_with_agency",
+  ],
+}
+`;
