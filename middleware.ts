@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE, verifySession } from '@/lib/auth';
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/config', '/api/leads', '/api/admin/:path*'],
+  matcher: ['/admin/:path*', '/api/config', '/api/config/publish', '/api/leads', '/api/admin/:path*'],
 };
 
 const PUBLIC_ADMIN_PATHS = new Set<string>([
@@ -22,8 +22,9 @@ export async function middleware(req: NextRequest) {
   const needsAuth =
     pathname.startsWith('/admin') ||
     pathname.startsWith('/api/admin/') ||
-    (pathname === '/api/config' && method !== 'GET') ||
-    (pathname === '/api/leads' && method === 'GET');
+    pathname === '/api/config' ||          // GET now returns DRAFT → auth on all methods
+    pathname === '/api/config/publish' ||
+    (pathname === '/api/leads' && method === 'GET'); // POST is the public discovery submission
 
   if (!needsAuth) return NextResponse.next();
 

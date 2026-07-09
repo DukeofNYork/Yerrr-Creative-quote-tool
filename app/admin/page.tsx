@@ -41,6 +41,9 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [workspace, setWorkspace] = useState<{ workspaceId: string; slug: string; publishedAt: string | null } | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishedFlash, setPublishedFlash] = useState(false);
 
   async function signOut() {
     await fetch('/api/admin/logout', { method: 'POST' });
@@ -54,7 +57,12 @@ export default function AdminPage() {
       .then(body => {
         if (body?.ok) setMe(body.user);
       });
-    fetch('/api/config').then(r => r.json()).then(setConfig);
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(body => {
+        setConfig(body.config ?? body);
+        if (body.workspace) setWorkspace(body.workspace);
+      });
   }, []);
 
   const update = (c: BusinessConfig) => {
@@ -83,12 +91,27 @@ export default function AdminPage() {
     }
   }
 
+  async function publish() {
+    setPublishing(true);
+    const res = await fetch('/api/config/publish', { method: 'POST' });
+    const body = await res.json();
+    setPublishing(false);
+    if (body.ok) {
+      setWorkspace(w => (w ? { ...w, publishedAt: body.publishedAt } : w));
+      setPublishedFlash(true);
+      setTimeout(() => setPublishedFlash(false), 2500);
+    }
+  }
+
   if (!config) {
     return <main className="p-10 text-muted">Loading…</main>;
   }
 
   const tabs = me?.role === 'owner' ? [...BASE_TABS, OWNER_EXTRA_TAB] : BASE_TABS;
-  const discoverHref = me && me.role === 'user' ? `/discover?u=${me.id}` : '/discover';
+  const previewHref = '/discover?preview=1';
+  const liveHref = workspace?.publishedAt ? `/d/${workspace.slug}` : null;
+  const liveUrl =
+    liveHref && typeof window !== 'undefined' ? `${window.location.origin}${liveHref}` : liveHref ?? '';
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col md:flex-row">
@@ -112,11 +135,24 @@ export default function AdminPage() {
           ))}
         </div>
         <div className="mt-4 flex flex-col gap-2 md:mt-auto">
-          <Link href={discoverHref} className="px-3 text-sm text-muted underline underline-offset-4" target="_blank">
-            Preview customer flow ↗
+          <Link href={previewHref} className="px-3 text-sm text-muted underline underline-offset-4" target="_blank">
+            Preview draft ↗
           </Link>
+          {liveHref && (
+            <Link href={liveHref} className="px-3 text-sm text-muted underline underline-offset-4" target="_blank">
+              View live experience ↗
+            </Link>
+          )}
           <button className={btnPrimary} disabled={!dirty || saving} onClick={save}>
             {saving ? 'Saving…' : savedFlash ? 'Saved ✓' : dirty ? 'Save changes' : 'All changes saved'}
+          </button>
+          <button
+            className="rounded-lg border border-line px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-line/40 disabled:opacity-50"
+            disabled={dirty || publishing}
+            onClick={publish}
+            title={dirty ? 'Save your changes before publishing' : undefined}
+          >
+            {publishing ? 'Publishing…' : publishedFlash ? 'Published ✓' : workspace?.publishedAt ? 'Publish changes' : 'Publish'}
           </button>
           {me && (
             <div className="px-3 pt-2 text-xs text-muted">
@@ -141,23 +177,26 @@ export default function AdminPage() {
             </ul>
           </div>
         )}
-        {me?.role === 'user' && tab !== 'leads' && tab !== 'users' && (
+        {liveHref && tab !== 'leads' && tab !== 'users' && (
           <div className="mb-6 rounded-xl border border-line bg-surface p-4 text-sm">
-            <p className="mb-1 font-medium">Your customer flow lives here:</p>
+            <p className="mb-1 font-medium">Your published discovery link:</p>
             <div className="flex flex-wrap items-center gap-2 text-muted">
-              <code className="rounded bg-line/40 px-2 py-1 text-ink">
-                {typeof window !== 'undefined' ? `${window.location.origin}/discover?u=${me.id}` : `/discover?u=${me.id}`}
-              </code>
+              <code className="rounded bg-line/40 px-2 py-1 text-ink">{liveUrl}</code>
               <button
-                onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/discover?u=${me.id}`)}
+                onClick={() => navigator.clipboard?.writeText(liveUrl)}
                 className="underline underline-offset-4 hover:text-ink"
               >
                 Copy
               </button>
-              <Link href={discoverHref} target="_blank" className="underline underline-offset-4 hover:text-ink">
+              <Link href={liveHref} target="_blank" className="underline underline-offset-4 hover:text-ink">
                 Open ↗
               </Link>
             </div>
+          </div>
+        )}
+        {!liveHref && tab !== 'leads' && tab !== 'users' && (
+          <div className="mb-6 rounded-xl border border-line bg-surface p-4 text-sm text-muted">
+            Publish your workspace to get a shareable discovery link.
           </div>
         )}
         {tab === 'catalog' && <CatalogPanel config={config} update={update} />}

@@ -8,7 +8,7 @@ import { nextQuestion, progress, visibleQuestions } from '@/lib/engine/flow';
 import { generateResult } from '@/lib/engine/recommend';
 import { DeskScene, DeskFrame } from './DeskScene';
 
-type Phase = 'loading' | 'industry' | 'service' | 'questions' | 'contact' | 'result';
+type Phase = 'loading' | 'unpublished' | 'industry' | 'service' | 'questions' | 'contact' | 'result';
 type Note = { k: string; v: string };
 
 const money = (n: number) => `$${n.toLocaleString()}`;
@@ -17,23 +17,35 @@ const AUTO_ADVANCE_MS = 280;
 
 const mono = 'ui-monospace, Menlo, monospace';
 
-export default function DiscoverPage() {
+export default function DiscoverPage({ slug, preview }: { slug?: string; preview?: boolean } = {}) {
   const [config, setConfig] = useState<BusinessConfig | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [session, setSession] = useState<SessionAnswers>({ answers: {} });
   const [answeredOrder, setAnsweredOrder] = useState<string[]>([]);
   const [contact, setContact] = useState({ name: '', email: '', phone: '' });
   const [result, setResult] = useState<DiscoveryResult | null>(null);
-  const [workspaceUserId, setWorkspaceUserId] = useState<string | undefined>(undefined);
+  const [workspaceId, setWorkspaceId] = useState<string | undefined>(undefined);
+  const [isPreview, setIsPreview] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const u = params.get('u') ?? undefined;
-    setWorkspaceUserId(u);
-    const configUrl = u ? `/api/config?u=${encodeURIComponent(u)}` : '/api/config';
+    const inPreview = preview ?? params.get('preview') === '1';
+    setIsPreview(inPreview);
+
+    // Preview → editor's DRAFT (auth). Otherwise the PUBLISHED config for the
+    // workspace, resolved by slug (canonical), ?u= (back-compat), or owner.
+    const configUrl =
+      inPreview ? '/api/config' :
+      slug ? `/api/public-config?slug=${encodeURIComponent(slug)}` :
+      u ? `/api/public-config?u=${encodeURIComponent(u)}` :
+      '/api/public-config';
+
     fetch(configUrl)
-      .then(r => r.json())
-      .then((c: BusinessConfig) => {
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
+      .then((body: { config: BusinessConfig; workspaceId?: string; workspace?: { workspaceId: string } }) => {
+        const c = body.config;
+        setWorkspaceId(body.workspaceId ?? body.workspace?.workspaceId);
         setConfig(c);
         if (c.industries.length === 1) {
           setSession(s => ({ ...s, industryId: c.industries[0].id }));
@@ -41,8 +53,9 @@ export default function DiscoverPage() {
         } else {
           setPhase('industry');
         }
-      });
-  }, []);
+      })
+      .catch(() => setPhase('unpublished'));
+  }, [slug, preview]);
 
   const current: Question | null = useMemo(() => {
     if (!config || phase !== 'questions') return null;
@@ -53,6 +66,9 @@ export default function DiscoverPage() {
     if (phase === 'questions' && config && !current) setPhase('contact');
   }, [phase, config, current]);
 
+  if (phase === 'unpublished') {
+    return <Stage><CenterMessage>This discovery experience isn’t published yet.</CenterMessage></Stage>;
+  }
   if (!config || phase === 'loading') {
     return <Stage><CenterMessage>Loading…</CenterMessage></Stage>;
   }
@@ -118,6 +134,8 @@ export default function DiscoverPage() {
     const r = generateResult(config!, finalSession);
     setResult(r);
     setPhase('result');
+    // Preview runs the real engine but never records a lead.
+    if (isPreview) return;
     fetch('/api/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -131,7 +149,7 @@ export default function DiscoverPage() {
           packageId: r.package.id,
           packageName: r.package.name,
         },
-        workspaceUserId,
+        workspaceId,
       }),
     }).catch(() => {});
   }
