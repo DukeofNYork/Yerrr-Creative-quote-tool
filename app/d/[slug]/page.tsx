@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import DiscoverPage from '@/app/discover/page';
+import DiscoveryExperience from '@/app/discover/DiscoveryExperience';
 
 /**
  * Canonical public discovery URL: /d/{slug}.
@@ -11,5 +11,5 @@ export default function SlugDiscover() {
   const params = useParams<{ slug: string }>();
   const raw = params?.slug;
   const slug = Array.isArray(raw) ? raw[0] : raw;
-  return <DiscoverPage slug={slug} />;
+  return <DiscoveryExperience slug={slug} />;
 }
