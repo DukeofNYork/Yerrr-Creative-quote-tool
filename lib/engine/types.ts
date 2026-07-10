@@ -141,6 +141,45 @@ export interface BusinessRule {
   priority: number;       // lower runs first within its phase
 }
 
+// ---------- Presentation layer (how the experience LOOKS and SOUNDS) ----------
+// IMPORTANT: the engine NEVER reads any of this. It is consumed only by the
+// customer-facing presentation components. It lives here purely because it is an
+// optional field on BusinessConfig. Changing it can never change engine behavior.
+
+/** The V1 Presentation Styles. Each is a first-class, opinionated experience. */
+export type PresentationStyle =
+  | 'basic-light'      // Foundation Presentation — the platform default (built later)
+  | 'basic-dark'       // same experience as basic-light, dark palette only
+  | 'creative-studio'  // flagship immersive notebook experience
+  | 'trades'           // blueprint-inspired, built around planning a job
+  | 'premium'          // elegant, minimal, luxury consultation
+  | 'healthcare';      // calm, trustworthy, clean
+
+/** Per-workspace visual identity. All optional — each style supplies defaults. */
+export interface PresentationBrand {
+  accent?: string;    // hex brand color
+  logoUrl?: string;   // absolute URL or data URI; omit → wordmark from business.name
+  tagline?: string;
+}
+
+/** Per-workspace copy overrides. Every field falls back to a style default. */
+export interface PresentationCopy {
+  industryPrompt?: string;
+  servicePrompt?: string;
+  contactPrompt?: string;
+  recommendationLabel?: string;
+  estimateLabel?: string;
+  nextStepsLabel?: string;
+  /** Who follows up with the customer — replaces any hardcoded role noun. */
+  roleNoun?: string;
+}
+
+export interface Presentation {
+  style: PresentationStyle;
+  brand?: PresentationBrand;
+  copy?: PresentationCopy;
+}
+
 // ---------- Top-level config ----------
 
 export interface BusinessConfig {
@@ -153,6 +192,11 @@ export interface BusinessConfig {
   rules: BusinessRule[];
   /** Rounding for estimate ranges, e.g. 50 → $7,450 not $7,437 */
   roundTo: number;
+  /**
+   * Presentation layer — how the flow looks and sounds. NEVER read by the engine.
+   * Absent → the temporary default (creative-studio) until Basic Light ships.
+   */
+  presentation?: Presentation;
 }
 
 // ---------- Runtime types ----------
