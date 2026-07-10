@@ -19,11 +19,107 @@ estimated investment range, and a qualified lead.
 
 ## What this is NOT
 
-- **Not an AI product.** Estimation is deterministic, explainable, and auditable. Every
-  result carries an audit trail of exactly which rules fired. This is a feature, not a
-  limitation — businesses trust math they can inspect.
+- **Not an AI product.** (See Principle 1 — this is permanent.)
 - **Not just a form builder.** The value is the decision/rules/pricing engine behind the form.
 - **Not just a quote calculator.** It qualifies, profiles, recommends, and captures leads.
+
+## Permanent product principles
+
+These are settled. Every architectural and product decision must reinforce them. Do not
+reopen them without an explicit, deliberate decision recorded here.
+
+### Principle 1 — This is NOT an AI product.
+
+The platform is **deterministic and rules-based**. The business owner teaches it how they
+qualify customers, scope projects, and estimate pricing through **guided configuration**.
+There is **no AI** in any part of the product:
+
+- onboarding · configuration · pricing · qualification · recommendations
+- customer results · copy generation · business logic
+
+Every result is **predictable, explainable, and auditable** — derived entirely from the
+owner's own rules, with an audit trail of exactly which rules fired. **The value is not
+intelligence; the value is that the platform consistently follows the owner's process.**
+(Implication: guided authoring maps answers → config deterministically. Copy is written by
+the owner or shipped in templates — never generated. No LLM anywhere in the runtime.)
+
+### Principle 2 — The engine never changes.
+
+Every service business runs on the **exact same engine**. The only thing that varies is how
+the experience is **presented** to the customer. If a need seems to require changing the
+engine, it belongs in config or the presentation layer instead. The engine is frozen and
+protected by the guardian test net (`lib/engine/__tests__`).
+
+### Principle 3 — Presentation Styles, not "themes"; independent from templates.
+
+We build **Presentation Styles** (Experiences), not themes — first-class, opinionated,
+mobile-first customer experiences, each native to the industries it serves. Presentation
+determines **how it feels**; it **never** affects business logic.
+
+**A Business Template and a Presentation are independent concepts:**
+
+- **Template** = industries, questions, packages, rules, pricing, workflow (the *content*).
+- **Presentation** = layout, visuals, typography, interaction, branding (the *experience*).
+
+Any template can run under any presentation — a plumber could choose Premium, a photographer
+could choose Basic Dark. **The engine never cares.** A template only *recommends* a presentation.
+
+**The six V1 Presentation Styles** (few, polished, intentional — never dozens):
+
+| Style | Default? | For | Feel |
+|---|---|---|---|
+| **Basic Light** | ✅ **Default** | Almost any service business — consultants, lawyers, accountants, advisors, IT, coaches | Clean, modern, fast, professional, mobile-first |
+| **Basic Dark** | | Same as Basic Light, dark palette | Identical experience; visuals only — no new layout or interactions |
+| **Creative Studio** | | Video, photography, agencies, designers, creatives | Immersive notebook — a **premium** style, no longer the default |
+| **Trades** | | Plumbing, HVAC, electrical, roofing, landscaping, remodeling | Blueprint-inspired, organized, built around planning a job |
+| **Premium** | | Jewelers, interior design, luxury travel/weddings, high-end services | Elegant, minimal, luxury consultation |
+| **Healthcare** | | Medical, dental, veterinary, wellness, physical therapy | Calm, trustworthy, clean |
+
+**Onboarding** asks the owner what *type of business* they run, applies that industry
+**template**, and **auto-recommends** the fitting presentation (Plumbing→Trades,
+Photography→Creative Studio, Consultant/Accountant/Law→Basic Light, Jeweler→Premium,
+Dental→Healthcare). The owner can change it later, but never has to make a design decision
+on day one.
+
+**Basic Light is the Foundation Presentation** — the experience every business gets by
+default. It must be clean, modern, professional, fast, extremely mobile-friendly, and
+timeless: if an owner never changes anything, they should still be **proud to send clients
+there.** **Basic Dark** is the same foundation in a dark palette — same layout, interactions,
+and components, palette only. **Creative Studio** is the **flagship** immersive presentation —
+handcrafted and memorable — and is no longer the platform default.
+
+The value is **not unlimited customization** — it is an exceptional, ready-to-use discovery
+experience that feels professional out of the box, powered by the same deterministic engine.
+
+### Principle 4 — Focused on service businesses that fit the discovery workflow.
+
+The platform is for service businesses that need to: **qualify a client → understand project
+scope → learn about budget → recommend the right service/package → produce a rough estimate →
+capture the lead → start the conversation.** If a business does not fit that workflow, it is
+**not a V1 target.** The goal is not to support every industry — it is to be the **best**
+discovery and estimation platform for service businesses. Stay focused and opinionated.
+
+### Principle 5 — Every Presentation Style is a premium product, never a "skin."
+
+Each style must feel like it could **stand on its own as a premium product** — thoughtfully
+designed for the businesses it serves, not a recolor of the same page. We build a new style
+only when it **meaningfully improves the customer experience for a real group of service
+businesses**, never merely because it looks different. Prefer **six exceptional experiences
+over twenty mediocre ones**: once the V1 six ship, we **stop** and let real customers use the
+platform before adding more.
+
+### Presentation build order (locked)
+
+1. Presentation schema (additive to `BusinessConfig`; engine untouched).
+2. Formalize **Creative Studio** as a Presentation Style (today's UI becomes `creative-studio`).
+3. Preserve Yerrr Creative by explicitly assigning it Creative Studio (backfill `ws:main:*`).
+4. Build the **Foundation Presentation (Basic Light)** — the new default.
+5. Add **Basic Dark** as a palette variation of Basic Light.
+6. Build **Trades**.
+7. Build **Premium**.
+8. Build **Healthcare**.
+
+Then **stop** and let real customers use the platform before adding any new style.
 
 ## The engine is the moat — protect it
 
@@ -42,9 +138,10 @@ instead.
 
 ## Who it serves
 
-Creative agencies, photographers, video production, web/marketing, home services,
-contractors, landscaping, roofing, architecture, interior design, consultants, attorneys,
-financial advisors, event/wedding pros, medical practices — **any service business.**
+Service businesses that fit the discovery workflow (Principle 4), grouped by the five
+Presentation Styles: **Creative Studio, Professional, Trades, Premium Services, Healthcare.**
+Not "any business" — specifically those that qualify a client, scope a project, gauge budget,
+recommend a service, produce an estimate, and capture the lead.
 
 ## The two audiences
 
@@ -75,8 +172,9 @@ Businesses embed the discovery experience into their own website the way they em
 - **Persistence** (`lib/store.ts`): Supabase, JSON-blob-in-Postgres, no RLS, tenant
   isolation enforced in app code. Works now; will not scale to 10k tenants or organizations.
 - **Multi-tenancy**: "one user = one workspace." No organization/team/roles model yet.
-- **Branding**: hardcoded to a photographer's-desk theme. Only `business.name` is dynamic.
-  Theme/brand is not yet in the schema.
+- **Presentation**: hardcoded to the Creative Studio (notebook/desk) look. Only
+  `business.name` is dynamic. Presentation Styles + brand not yet in the schema (proposal
+  pending approval — see Principle 3).
 - **Templates**: none. One creative-agency seed config that every workspace clones.
 - **Publishing**: `/discover?u=<userId>` query param. No slug, no embed widget.
 - **Auth**: homegrown HMAC-signed cookie sessions; PBKDF2 for users; env-var owner account.
@@ -107,9 +205,9 @@ See the full architecture review and roadmap in the project discussion / ADRs.
 
 ## Roadmap headline
 
-- **V1** — Any single service business looks native and publishes everywhere: `theme`/`brand`
-  in schema, five industry templates, workspace/slug decoupling, draft→published, `/d/{slug}`
-  routing, embed + QR, guided authoring for core moments, server-trusted estimates.
+- **V1** — Any service business looks native and publishes everywhere: **Presentation Styles**
+  + brand in schema (5 styles), industry templates, workspace/slug decoupling, draft→published,
+  `/d/{slug}` routing, embed + QR, guided authoring for core moments, server-trusted estimates.
   **Goal: first 10–20 paying customers.**
 - **V2** — Real SaaS spine: relational schema + RLS, Organizations → Workspaces → Members,
   version history, subdomains/white-label groundwork, deeper self-serve authoring.
