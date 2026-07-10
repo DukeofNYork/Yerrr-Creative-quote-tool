@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
       </div>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <input
-          type="email"
+          type="text"
           autoFocus
           autoComplete="username"
           className={inputCls}
