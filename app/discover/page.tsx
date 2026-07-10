@@ -41,7 +41,7 @@ export default function DiscoverPage({ slug, preview }: { slug?: string; preview
       u ? `/api/public-config?u=${encodeURIComponent(u)}` :
       '/api/public-config';
 
-    fetch(configUrl)
+    fetch(configUrl, { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
       .then((body: { config: BusinessConfig; workspaceId?: string; workspace?: { workspaceId: string } }) => {
         const c = body.config;

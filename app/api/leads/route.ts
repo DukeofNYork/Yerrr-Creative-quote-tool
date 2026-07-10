@@ -10,15 +10,20 @@ import {
   type Lead,
 } from '@/lib/store';
 
+// Leads change on every submission — never serve a cached list.
+export const dynamic = 'force-dynamic';
+
+const NO_STORE = { 'Cache-Control': 'no-store, max-age=0, must-revalidate' } as const;
+
 export async function GET() {
   const s = await verifySession((await cookies()).get(SESSION_COOKIE)?.value);
-  if (!s) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  if (!s) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401, headers: NO_STORE });
 
   // Owner is the platform super-admin → sees every workspace's leads.
-  if (s.role === 'owner') return NextResponse.json(await readLeads());
+  if (s.role === 'owner') return NextResponse.json(await readLeads(), { headers: NO_STORE });
 
   const ws = await getWorkspaceByOwner(s.userId);
-  return NextResponse.json(await readLeadsByWorkspace(ws.workspaceId));
+  return NextResponse.json(await readLeadsByWorkspace(ws.workspaceId), { headers: NO_STORE });
 }
 
 /** Public discovery submission. Tags the lead with a validated workspaceId. */

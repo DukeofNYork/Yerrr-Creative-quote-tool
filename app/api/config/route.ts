@@ -5,6 +5,11 @@ import { getWorkspaceByOwner, readDraftConfig, writeDraftConfig } from '@/lib/st
 import { validateConfig } from '@/lib/engine/validate';
 import type { BusinessConfig } from '@/lib/engine/types';
 
+// Draft config drives the admin editor + Preview — always read fresh.
+export const dynamic = 'force-dynamic';
+
+const NO_STORE = { 'Cache-Control': 'no-store, max-age=0, must-revalidate' } as const;
+
 async function session() {
   return verifySession((await cookies()).get(SESSION_COOKIE)?.value);
 }
@@ -12,7 +17,7 @@ async function session() {
 /** Admin / preview: returns the session workspace's DRAFT config + workspace meta. */
 export async function GET() {
   const s = await session();
-  if (!s) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  if (!s) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401, headers: NO_STORE });
 
   const ws = await getWorkspaceByOwner(s.userId);
   const config = await readDraftConfig(ws.workspaceId);
@@ -20,7 +25,7 @@ export async function GET() {
     ok: true,
     config,
     workspace: { workspaceId: ws.workspaceId, slug: ws.slug, publishedAt: ws.publishedAt ?? null },
-  });
+  }, { headers: NO_STORE });
 }
 
 /** Admin save: writes the session workspace's DRAFT config (does not publish). */
