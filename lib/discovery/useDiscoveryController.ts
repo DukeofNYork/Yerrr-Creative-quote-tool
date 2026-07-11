@@ -8,17 +8,19 @@ import { nextQuestion, progress as engineProgress } from '@/lib/engine/flow';
 import { generateResult } from '@/lib/engine/recommend';
 import { DEFAULT_PRESENTATION_STYLE, resolvePresentation } from '@/lib/presentation';
 import { resolveCopy } from './copy';
+import { resolveLanding } from './landing';
+import { buildRationale } from './rationale';
 import { buildNotes } from './notes';
 import type { Contact, DiscoveryActions, DiscoveryPhase, DiscoveryVM } from './types';
 
 /**
- * The single, presentation-agnostic discovery controller. It owns ALL flow state
- * and is the ONLY place that calls the engine (nextQuestion / progress /
- * generateResult) and the lead API. Presentations render the returned view-model
- * and invoke the returned actions — they never touch business logic.
+ * The single, presentation-agnostic discovery controller. Owns ALL flow state and
+ * is the ONLY caller of the engine (nextQuestion / progress / generateResult) and
+ * the lead API. Presentations render the view-model and invoke the actions.
  *
- * Behavior is a faithful lift of the original app/discover/page.tsx controller;
- * selection timing (auto-advance vs explicit Continue) is left to presentations.
+ * Journey (value-first): landing → questions → result (recommendation + estimate,
+ * NO gate) → contact ("Ready for the next step?") → done. The recommendation is
+ * computed on entering `result`; the lead is captured only at contact submit.
  */
 export function useDiscoveryController(
   { slug, preview }: { slug?: string; preview?: boolean },
@@ -49,29 +51,35 @@ export function useDiscoveryController(
       .then((body: { config: BusinessConfig; workspaceId?: string; workspace?: { workspaceId: string } }) => {
         const c = body.config;
         setWorkspaceId(body.workspaceId ?? body.workspace?.workspaceId);
+        // single-industry configs preselect the industry so `start()` can skip it
+        if (c.industries.length === 1) setSession(s => ({ ...s, industryId: c.industries[0].id }));
         setConfig(c);
-        if (c.industries.length === 1) {
-          setSession(s => ({ ...s, industryId: c.industries[0].id }));
-          setPhase('service');
-        } else {
-          setPhase('industry');
-        }
+        setPhase('landing'); // default-on landing begins every experience
       })
       .catch(() => setPhase('unpublished'));
   }, [slug, preview]);
+
+  const multiIndustry = (config?.industries.length ?? 0) > 1;
 
   const current: Question | null = useMemo(() => {
     if (!config || phase !== 'questions') return null;
     return nextQuestion(config, session);
   }, [config, session, phase]);
 
+  // When the last question is answered, compute the recommendation and reveal it.
   useEffect(() => {
-    if (phase === 'questions' && config && !current) setPhase('contact');
-  }, [phase, config, current]);
-
-  const multiIndustry = (config?.industries.length ?? 0) > 1;
+    if (phase !== 'questions' || !config || current) return;
+    try {
+      setResult(generateResult(config, session));
+    } catch (e) {
+      console.error(e);
+      setResult(null);
+    }
+    setPhase('result');
+  }, [phase, config, current, session]);
 
   // ---- actions ----
+  const start = () => setPhase(multiIndustry ? 'industry' : 'service');
   const selectIndustry = (id: string) => setSession(s => ({ ...s, industryId: id }));
   const selectService = (id: string) => setSession(s => ({ ...s, serviceId: id }));
   const advance = () =>
@@ -83,27 +91,32 @@ export function useDiscoveryController(
   };
   const skip = (q: Question) => answer(q, null);
 
+  const continueToContact = () => setPhase('contact');
+
+  const popLastAnswer = () => {
+    const last = answeredOrder[answeredOrder.length - 1];
+    setAnsweredOrder(o => o.slice(0, -1));
+    setSession(s => {
+      const answers = { ...s.answers };
+      delete answers[last];
+      return { ...s, answers };
+    });
+  };
+
   const back = () => {
-    if (phase === 'contact') {
-      if (answeredOrder.length > 0) { setPhase('questions'); return; }
-      setPhase('service');
+    if (phase === 'contact') { setPhase('result'); return; }
+    if (phase === 'result') {
+      if (answeredOrder.length > 0) { popLastAnswer(); setResult(null); setPhase('questions'); }
+      else setPhase('service');
       return;
     }
-    if (phase === 'questions' && answeredOrder.length > 0) {
-      const last = answeredOrder[answeredOrder.length - 1];
-      setAnsweredOrder(o => o.slice(0, -1));
-      setSession(s => {
-        const answers = { ...s.answers };
-        delete answers[last];
-        return { ...s, answers };
-      });
+    if (phase === 'questions' && answeredOrder.length > 0) { popLastAnswer(); return; }
+    if (phase === 'service') {
+      if (multiIndustry) { setSession(s => ({ ...s, industryId: undefined, serviceId: undefined })); setPhase('industry'); }
+      else setPhase('landing');
       return;
     }
-    if (phase === 'service' && multiIndustry) {
-      setSession(s => ({ ...s, industryId: undefined, serviceId: undefined }));
-      setPhase('industry');
-      return;
-    }
+    if (phase === 'industry') { setPhase('landing'); return; }
   };
 
   const restart = () => {
@@ -111,15 +124,13 @@ export function useDiscoveryController(
     setAnsweredOrder([]);
     setContact({ name: '', email: '', phone: '' });
     setResult(null);
-    setPhase(multiIndustry ? 'industry' : 'service');
+    setPhase('landing');
   };
 
   const submitContact = () => {
+    setPhase('done');
+    if (isPreview || !result) return; // value already delivered; capture the lead now
     const finalSession = { ...session, contact };
-    const r = generateResult(config!, finalSession);
-    setResult(r);
-    setPhase('result');
-    if (isPreview) return; // preview runs the real engine but never records a lead
     fetch('/api/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,38 +138,44 @@ export function useDiscoveryController(
         contact,
         session: finalSession,
         result: {
-          estimate: r.estimate,
-          profile: r.profile,
-          complexityScore: r.complexityScore,
-          packageId: r.package.id,
-          packageName: r.package.name,
+          estimate: result.estimate,
+          profile: result.profile,
+          complexityScore: result.complexityScore,
+          packageId: result.package.id,
+          packageName: result.package.name,
         },
         workspaceId,
       }),
     }).catch(() => {});
   };
 
-  // ---- derived view fields (faithful to the original page.tsx math) ----
+  // ---- derived view fields ----
   const presentation = config ? resolvePresentation(config) : { style: DEFAULT_PRESENTATION_STYLE };
   const copy = resolveCopy(config?.presentation);
+  const businessName = config?.business.name ?? '';
+  const landing = resolveLanding(config?.presentation, businessName);
   const prog = config ? engineProgress(config, session) : { answered: 0, total: 0 };
 
   const preQuestions = (multiIndustry ? 1 : 0) + 1; // industry + service
-  const totalSteps = preQuestions + prog.total + 2; // + contact + result
+  const totalSteps = preQuestions + prog.total + 2; // + result + contact
   const currentStep =
     phase === 'industry' ? 1 :
     phase === 'service' ? preQuestions :
     phase === 'questions' ? preQuestions + Math.min(prog.answered + 1, prog.total) :
-    phase === 'contact' ? preQuestions + prog.total + 1 :
-    /* result / loading / unpublished */ totalSteps;
-  const pct = totalSteps > 1 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : 0;
+    phase === 'result' ? preQuestions + prog.total + 1 :
+    phase === 'contact' ? preQuestions + prog.total + 2 :
+    /* landing / done / loading / unpublished */ 0;
+  const pct = currentStep > 0 && totalSteps > 1 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : 0;
 
   const canGoBack =
     phase === 'contact' ||
+    phase === 'result' ||
     (phase === 'questions' && answeredOrder.length > 0) ||
-    (phase === 'service' && multiIndustry);
+    phase === 'service' ||
+    phase === 'industry';
 
   const notes = config ? buildNotes(config, session) : [];
+  const rationale = config && result ? buildRationale(config, session, result) : null;
   const stepKey =
     phase === 'questions' && current ? `q:${current.id}` :
     phase === 'result' && result ? `r:${result.package.id}` :
@@ -172,26 +189,15 @@ export function useDiscoveryController(
     : [];
 
   const vm: DiscoveryVM = {
-    phase,
-    config,
-    presentation,
-    copy,
-    businessName: config?.business.name ?? '',
-    current,
-    session,
-    industries,
-    services,
-    contact,
-    result,
+    phase, config, presentation, copy, landing, businessName,
+    current, session, industries, services, contact, result, rationale,
     progress: { currentStep, totalSteps, pct },
-    canGoBack,
-    notes,
-    stepKey,
-    isPreview,
+    canGoBack, notes, stepKey, isPreview,
   };
 
   const actions: DiscoveryActions = {
-    selectIndustry, selectService, advance, answer, skip, back, restart, setContact, submitContact,
+    start, selectIndustry, selectService, advance, answer, skip,
+    continueToContact, back, restart, setContact, submitContact,
   };
 
   return { vm, actions };

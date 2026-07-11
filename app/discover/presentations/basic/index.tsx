@@ -261,19 +261,81 @@ function Card({ role, checked, onClick, label, desc }: {
 
 function Flow({ vm, actions }: PresentationProps) {
   switch (vm.phase) {
+    case 'landing':
+      return <LandingStep vm={vm} actions={actions} />;
     case 'industry':
       return <ChoiceStep vm={vm} actions={actions} kind="industry" />;
     case 'service':
       return <ChoiceStep vm={vm} actions={actions} kind="service" />;
     case 'questions':
       return vm.current ? <QuestionStep key={vm.current.id} vm={vm} actions={actions} /> : <Centered>…</Centered>;
+    case 'result':
+      return <ResultStep vm={vm} actions={actions} />;
     case 'contact':
       return <ContactStep vm={vm} actions={actions} />;
-    case 'result':
-      return vm.result ? <ResultStep vm={vm} actions={actions} /> : <Centered>…</Centered>;
+    case 'done':
+      return <DoneStep vm={vm} actions={actions} />;
     default:
       return <Centered>…</Centered>;
   }
+}
+
+function LandingStep({ vm, actions }: PresentationProps) {
+  const { landing } = vm;
+  const brand = vm.presentation.brand;
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-[560px] flex-col px-5" style={{ background: 'var(--bl-bg)', color: 'var(--bl-fg)' }}>
+      <header className="pt-8 pb-2">
+        {brand?.logoUrl
+          ? <img src={brand.logoUrl} alt={vm.businessName} style={{ height: 34, width: 'auto', objectFit: 'contain' }} />
+          : <span style={{ fontWeight: 700, fontSize: 18 }}>{vm.businessName}</span>}
+      </header>
+      <main className="flex flex-1 flex-col justify-center py-8">
+        {landing.heroImageUrl && (
+          <img src={landing.heroImageUrl} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 16, marginBottom: 24 }} />
+        )}
+        <h1 style={{ fontSize: 'clamp(26px, 6.5vw, 34px)', fontWeight: 700, lineHeight: 1.15, letterSpacing: '-.01em' }}>{landing.heroTitle}</h1>
+        {landing.subtitle && <p style={{ fontSize: 17, color: 'var(--bl-fg)', marginTop: 10, lineHeight: 1.4 }}>{landing.subtitle}</p>}
+        <p style={{ fontSize: 16, lineHeight: 1.55, color: 'var(--bl-muted)', marginTop: 12 }}>{landing.description}</p>
+        {landing.receiveBullets.length > 0 && (
+          <ul className="flex flex-col gap-2" style={{ listStyle: 'none', padding: 0, margin: '20px 0 0' }}>
+            {landing.receiveBullets.map(b => (
+              <li key={b} style={{ display: 'flex', gap: 10, fontSize: 15, lineHeight: 1.5 }}>
+                <span aria-hidden style={{ color: 'var(--bl-accent)' }}>✓</span><span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div style={{ fontSize: 13, color: 'var(--bl-muted)', marginTop: 20 }}>⏱ {landing.estimatedTime}</div>
+      </main>
+      <div className="sticky bottom-0 py-5" style={{ background: 'var(--bl-bg)' }}>
+        <button
+          onClick={actions.start}
+          className="bl-focus bl-anim w-full"
+          style={{ minHeight: 52, borderRadius: 12, border: 'none', background: 'var(--bl-accent)', color: 'var(--bl-on-accent)', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}
+        >
+          {landing.ctaText}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DoneStep({ vm, actions }: PresentationProps) {
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-[560px] flex-col items-center justify-center px-5 text-center" style={{ background: 'var(--bl-bg)', color: 'var(--bl-fg)' }}>
+      <div aria-hidden style={{ fontSize: 40, color: 'var(--bl-accent)' }}>✓</div>
+      <h1 style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: 700, marginTop: 12 }}>
+        Thanks{vm.contact.name ? `, ${vm.contact.name.split(' ')[0]}` : ''}.
+      </h1>
+      <p style={{ fontSize: 15, color: 'var(--bl-muted)', marginTop: 10, lineHeight: 1.55, maxWidth: 380 }}>
+        We’ve got your details and your recommendation. Someone from {vm.businessName} will follow up shortly to continue the conversation.
+      </p>
+      <button onClick={actions.restart} className="bl-focus" style={{ marginTop: 24, border: 'none', background: 'transparent', color: 'var(--bl-muted)', fontSize: 13, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer' }}>
+        Start over
+      </button>
+    </div>
+  );
 }
 
 function ChoiceStep({ vm, actions, kind }: PresentationProps & { kind: 'industry' | 'service' }) {
@@ -472,9 +534,9 @@ function ContactStep({ vm, actions }: PresentationProps) {
     <Shell
       vm={vm}
       titleId={titleId}
-      title={vm.copy.contactPrompt}
-      subtitle="We’ll write up the plan and send it over. One email. No spam."
-      footer={<Nav vm={vm} actions={actions} continueLabel="See my recommendation" canContinue={valid} onContinue={actions.submitContact} />}
+      title="Ready for the next step?"
+      subtitle="Share your details and we’ll prepare a more accurate proposal, answer your questions, and help you schedule a consultation."
+      footer={<Nav vm={vm} actions={actions} continueLabel="Send my details" canContinue={valid} onContinue={actions.submitContact} />}
     >
       <div className="flex flex-col gap-4">
         <Labeled label="Your name">
@@ -566,40 +628,59 @@ function TextArea({ value, onChange, placeholder, labelId }: { value: string; on
 
 function ResultStep({ vm, actions }: PresentationProps) {
   const titleId = useId();
-  const r = vm.result!;
+  const r = vm.result;
+  if (!r) {
+    return (
+      <Shell vm={vm} titleId={titleId} title="We couldn’t generate a recommendation" subtitle="Please try again."
+        footer={<Nav vm={vm} actions={actions} continueLabel="Start over" canContinue onContinue={actions.restart} />}>
+        <p style={{ color: 'var(--bl-muted)', fontSize: 14 }}>Something went wrong preparing your recommendation.</p>
+      </Shell>
+    );
+  }
+  const rationale = vm.rationale;
+  const chip: React.CSSProperties = { fontSize: 12, padding: '4px 10px', borderRadius: 999, background: 'var(--bl-surface)', border: '1px solid var(--bl-border)', color: 'var(--bl-fg)' };
+  const eyebrow: React.CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: '.06em', color: 'var(--bl-muted)', textTransform: 'uppercase' };
   return (
     <Shell
       vm={vm}
       titleId={titleId}
       title={r.package.name}
       subtitle={vm.copy.recommendationLabel}
-      footer={
-        <>
-          <span style={{ fontSize: 12, color: 'var(--bl-muted)' }}>
-            We’ll email the full plan to {vm.contact.email || 'you'}.
-          </span>
-          <button onClick={actions.restart} className="bl-focus ml-auto cursor-pointer bg-transparent" style={{ border: 'none', color: 'var(--bl-muted)', fontSize: 13, textDecoration: 'underline', textUnderlineOffset: 3 }}>
-            Start over
-          </button>
-        </>
-      }
+      footer={<Nav vm={vm} actions={actions} continueLabel="Continue" canContinue onContinue={actions.continueToContact} />}
     >
-      <div>
-        <div className="tabular-nums" style={{ fontSize: 'clamp(30px, 8vw, 40px)', fontWeight: 700, letterSpacing: '-.01em' }}>
-          {money(r.estimate.min)} <span style={{ color: 'var(--bl-muted)' }}>–</span> {money(r.estimate.max)}
+      <div className="flex flex-col gap-6">
+        <div>
+          <div className="tabular-nums" style={{ fontSize: 'clamp(30px, 8vw, 40px)', fontWeight: 700, letterSpacing: '-.01em' }}>
+            {money(r.estimate.min)} <span style={{ color: 'var(--bl-muted)' }}>–</span> {money(r.estimate.max)}
+          </div>
+          <div style={{ ...eyebrow, marginTop: 2 }}>{vm.copy.estimateLabel}</div>
         </div>
-        <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.08em', color: 'var(--bl-muted)', marginTop: 2, textTransform: 'uppercase' }}>
-          {vm.copy.estimateLabel}
+
+        {rationale && (
+          <div style={{ borderRadius: 14, border: '1px solid var(--bl-border)', background: 'color-mix(in srgb, var(--bl-accent) 4%, var(--bl-surface))', padding: 16 }}>
+            <div style={{ ...eyebrow, marginBottom: 8 }}>Why this fits</div>
+            <p style={{ fontSize: 15, lineHeight: 1.55 }}>{rationale.summary}</p>
+            {rationale.packageDescription && (
+              <p style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--bl-muted)', marginTop: 8 }}>{rationale.packageDescription}</p>
+            )}
+            {rationale.highlights.length > 0 && (
+              <div className="flex flex-wrap gap-1.5" style={{ marginTop: 12 }}>
+                {rationale.highlights.map(h => <span key={h} style={chip}>{h}</span>)}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div>
+          <div style={{ ...eyebrow, marginBottom: 10 }}>What’s included</div>
+          <ul className="flex flex-col gap-2.5" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {r.deliverables.map(d => (
+              <li key={d} style={{ display: 'flex', gap: 10, fontSize: 14, lineHeight: 1.5 }}>
+                <span aria-hidden style={{ color: 'var(--bl-accent)' }}>✓</span><span>{d}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-        <div style={{ height: 1, background: 'var(--bl-border)', margin: '18px 0 14px' }} />
-        <ul className="flex flex-col gap-2.5" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {r.deliverables.map(d => (
-            <li key={d} style={{ display: 'flex', gap: 10, fontSize: 14, lineHeight: 1.5 }}>
-              <span aria-hidden style={{ color: 'var(--bl-accent)' }}>✓</span>
-              <span>{d}</span>
-            </li>
-          ))}
-        </ul>
       </div>
     </Shell>
   );

@@ -174,10 +174,26 @@ export interface PresentationCopy {
   roleNoun?: string;
 }
 
+/**
+ * Landing page content shown before the discovery questions. Default-on for every
+ * experience; sensible defaults are generated from the business name when unset.
+ * Logo + accent are NOT here — they come from `brand` (single source of truth).
+ */
+export interface PresentationLanding {
+  heroTitle?: string;
+  subtitle?: string;
+  description?: string;
+  receiveBullets?: string[];   // "What you'll receive"
+  estimatedTime?: string;      // e.g. "About 2 minutes"
+  ctaText?: string;            // primary CTA button
+  heroImageUrl?: string;       // optional
+}
+
 export interface Presentation {
   style: PresentationStyle;
   brand?: PresentationBrand;
   copy?: PresentationCopy;
+  landing?: PresentationLanding;
 }
 
 // ---------- Top-level config ----------

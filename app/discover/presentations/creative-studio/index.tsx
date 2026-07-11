@@ -8,6 +8,8 @@ import { AUTO_ADVANCE_MS } from '@/lib/discovery/constants';
 import { useQuestionInput } from '@/lib/discovery/useQuestionInput';
 import type { Note } from '@/lib/discovery/notes';
 import type { ResolvedCopy } from '@/lib/discovery/copy';
+import type { ResolvedLanding } from '@/lib/discovery/landing';
+import type { Rationale } from '@/lib/discovery/rationale';
 import type { PresentationProps } from '@/lib/discovery/types';
 
 const mono = 'ui-monospace, Menlo, monospace';
@@ -24,18 +26,23 @@ export default function CreativeStudio({ vm, actions }: PresentationProps) {
     return <Stage><CenterMessage>Loading…</CenterMessage></Stage>;
   }
 
-  const { phase, session, current, contact, result, notes, progress, canGoBack, stepKey, copy, businessName } = vm;
+  const { phase, session, current, contact, result, rationale, notes, progress, canGoBack, stepKey, copy, businessName, landing } = vm;
+  const showHeader = phase !== 'landing' && phase !== 'done';
 
   return (
     <Stage>
-      <Notebook business={businessName} notes={notes} showNextSteps={phase === 'result'}>
-        <RightPageHeader
-          counter={`${pad(progress.currentStep)} / ${pad(progress.totalSteps)}`}
-          progressPct={progress.pct}
-          canGoBack={canGoBack}
-          onBack={actions.back}
-        />
+      <Notebook business={businessName} notes={notes} showNextSteps={phase === 'result' || phase === 'contact'}>
+        {showHeader && (
+          <RightPageHeader
+            counter={`${pad(progress.currentStep)} / ${pad(progress.totalSteps)}`}
+            progressPct={progress.pct}
+            canGoBack={canGoBack}
+            onBack={actions.back}
+          />
+        )}
         <div key={stepKey} className="page-in flex min-h-0 flex-1 flex-col">
+          {phase === 'landing' && <LandingStep landing={landing} onStart={actions.start} />}
+
           {phase === 'industry' && (
             <ChoiceStep
               title={copy.industryPrompt}
@@ -65,21 +72,66 @@ export default function CreativeStudio({ vm, actions }: PresentationProps) {
             />
           )}
 
-          {phase === 'contact' && (
-            <ContactStep
-              contact={contact}
-              setContact={actions.setContact}
-              onSubmit={actions.submitContact}
-              copy={copy}
-            />
+          {phase === 'result' && (
+            <ResultStep result={result} rationale={rationale} copy={copy} onContinue={actions.continueToContact} />
           )}
 
-          {phase === 'result' && result && (
-            <ResultStep result={result} email={contact.email} onRestart={actions.restart} copy={copy} />
+          {phase === 'contact' && (
+            <ContactStep contact={contact} setContact={actions.setContact} onSubmit={actions.submitContact} />
+          )}
+
+          {phase === 'done' && (
+            <DoneStep businessName={businessName} name={contact.name} onRestart={actions.restart} />
           )}
         </div>
       </Notebook>
     </Stage>
+  );
+}
+
+function LandingStep({ landing, onStart }: { landing: ResolvedLanding; onStart: () => void }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <h2 className="font-display" style={{ fontWeight: 600, fontSize: 'clamp(24px, 5.5vw, 30px)', lineHeight: 1.12, color: 'var(--ink)', margin: '8px 0 0' }}>
+        {landing.heroTitle}
+      </h2>
+      {landing.subtitle && (
+        <p className="font-display" style={{ fontStyle: 'italic', fontSize: 17, color: 'var(--ink)', marginTop: 8 }}>{landing.subtitle}</p>
+      )}
+      <p style={{ fontSize: 14, color: 'var(--muted)', marginTop: 10, lineHeight: 1.5 }}>{landing.description}</p>
+      {landing.receiveBullets.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 16 }}>
+          {landing.receiveBullets.map(b => (
+            <div key={b} style={{ display: 'flex', gap: 10, fontSize: 13, lineHeight: 1.45, color: 'var(--ink)' }}>
+              <span style={{ color: 'var(--muted)' }}>—</span><span>{b}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: '.12em', color: 'var(--muted)', marginTop: 16 }}>
+        ⏱ {landing.estimatedTime.toUpperCase()}
+      </div>
+      <div className="mt-auto pt-5">
+        <ContinueButton enabled onClick={onStart}>{landing.ctaText}</ContinueButton>
+      </div>
+    </div>
+  );
+}
+
+function DoneStep({ businessName, name, onRestart }: { businessName: string; name: string; onRestart: () => void }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col justify-center">
+      <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '.18em', color: 'var(--rec)' }}>● THANK YOU</div>
+      <h2 className="font-display" style={{ fontWeight: 600, fontSize: 'clamp(22px, 5vw, 28px)', color: 'var(--ink)', margin: '10px 0 0' }}>
+        Thanks{name ? `, ${name.split(' ')[0]}` : ''}.
+      </h2>
+      <p style={{ fontSize: 14, color: 'var(--muted)', marginTop: 10, lineHeight: 1.5 }}>
+        We’ve got your details and your recommendation. Someone from {businessName} will follow up shortly to continue the conversation.
+      </p>
+      <button onClick={onRestart} className="mt-4 self-start cursor-pointer border-0 bg-transparent p-0 underline" style={{ fontFamily: 'inherit', fontSize: 12, color: 'var(--muted)' }}>
+        Start over
+      </button>
+    </div>
   );
 }
 
@@ -626,17 +678,15 @@ function ContactStep({
   contact,
   setContact,
   onSubmit,
-  copy,
 }: {
   contact: { name: string; email: string; phone: string };
   setContact: (c: { name: string; email: string; phone: string }) => void;
   onSubmit: () => void;
-  copy: ResolvedCopy;
 }) {
   const valid = contact.name.trim().length > 1 && /.+@.+\..+/.test(contact.email);
   return (
     <>
-      <StepTitle title={copy.contactPrompt} prompt="We'll write up the plan and send it over." />
+      <StepTitle title="Ready for the next step?" prompt="Share your details and we’ll prepare a proposal, answer questions, and help you schedule a consultation." />
       <div className="flex flex-col gap-1">
         <FieldLabel>YOUR NAME</FieldLabel>
         <UnderlineInput value={contact.name} onChange={v => setContact({ ...contact, name: v })} placeholder="" />
@@ -648,8 +698,8 @@ function ContactStep({
         <UnderlineInput type="tel" value={contact.phone} onChange={v => setContact({ ...contact, phone: v })} placeholder="" />
       </div>
       <div className="mt-auto flex flex-wrap items-center gap-3.5 pt-4">
-        <ContinueButton enabled={valid} onClick={onSubmit}>See my recommendation</ContinueButton>
-        <span style={{ fontSize: '12px', color: 'var(--muted)' }}>One thoughtful email. No spam.</span>
+        <ContinueButton enabled={valid} onClick={onSubmit}>Send my details</ContinueButton>
+        <span style={{ fontSize: '12px', color: 'var(--muted)' }}>No spam — just next steps.</span>
       </div>
     </>
   );
@@ -727,31 +777,48 @@ function UnderlineTextarea({ value, onChange, placeholder }: { value: string; on
 
 function ResultStep({
   result,
-  email,
-  onRestart,
+  rationale,
   copy,
+  onContinue,
 }: {
-  result: DiscoveryResult;
-  email: string;
-  onRestart: () => void;
+  result: DiscoveryResult | null;
+  rationale: Rationale | null;
   copy: ResolvedCopy;
+  onContinue: () => void;
 }) {
+  if (!result) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col justify-center">
+        <p style={{ fontSize: 14, color: 'var(--muted)' }}>We couldn’t generate a recommendation. Please start over.</p>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div style={{ fontFamily: mono, fontSize: '10px', letterSpacing: '.18em', color: 'var(--muted)', margin: '10px 0 4px' }}>
+      <div style={{ fontFamily: mono, fontSize: '10px', letterSpacing: '.18em', color: 'var(--muted)', margin: '8px 0 4px' }}>
         {copy.recommendationLabel}
       </div>
-      <h2 className="font-display" style={{ fontWeight: 600, fontSize: 'clamp(24px, 5.5vw, 29px)', lineHeight: 1.1, color: 'var(--ink)', margin: 0 }}>
+      <h2 className="font-display" style={{ fontWeight: 600, fontSize: 'clamp(22px, 5vw, 27px)', lineHeight: 1.1, color: 'var(--ink)', margin: 0 }}>
         {result.package.name}
       </h2>
-      <div className="font-display tabular-nums" style={{ fontWeight: 600, fontSize: 'clamp(32px, 8vw, 42px)', letterSpacing: '-.01em', color: 'var(--ink)', margin: '14px 0 2px' }}>
+      <div className="font-display tabular-nums" style={{ fontWeight: 600, fontSize: 'clamp(28px, 7vw, 38px)', letterSpacing: '-.01em', color: 'var(--ink)', margin: '12px 0 2px' }}>
         {money(result.estimate.min)} <span style={{ color: 'var(--muted)' }}>–</span> {money(result.estimate.max)}
       </div>
       <div style={{ fontFamily: mono, fontSize: '9.5px', letterSpacing: '.16em', color: 'var(--muted)' }}>
         {copy.estimateLabel}
       </div>
-      <div style={{ height: 1, background: 'var(--line)', margin: '16px 0 12px' }} />
-      <div className="flex min-h-0 flex-1 flex-col gap-[7px] overflow-auto">
+
+      {rationale && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          <div style={{ fontFamily: mono, fontSize: '9.5px', letterSpacing: '.16em', color: 'var(--muted)', marginBottom: 6 }}>WHY THIS FITS</div>
+          <p className="font-display" style={{ fontStyle: 'italic', fontSize: 15, lineHeight: 1.5, color: 'var(--ink)' }}>{rationale.summary}</p>
+          {rationale.packageDescription && (
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 6, lineHeight: 1.5 }}>{rationale.packageDescription}</p>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 flex min-h-0 flex-1 flex-col gap-[7px] overflow-auto">
         {result.deliverables.map(d => (
           <div key={d} style={{ display: 'flex', gap: 10, fontSize: '13px', lineHeight: 1.45, color: 'var(--ink)' }}>
             <span style={{ color: 'var(--muted)' }}>—</span>
@@ -759,17 +826,8 @@ function ResultStep({
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap items-baseline justify-between gap-3 pt-3">
-        <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
-          We&apos;ll email the full plan to {email || 'you'}.
-        </span>
-        <button
-          onClick={onRestart}
-          className="cursor-pointer border-0 bg-transparent p-0 underline"
-          style={{ fontFamily: 'inherit', fontSize: '12px', color: 'var(--muted)', whiteSpace: 'nowrap' }}
-        >
-          Start over
-        </button>
+      <div className="pt-4">
+        <ContinueButton enabled onClick={onContinue}>Ready for the next step?</ContinueButton>
       </div>
     </div>
   );
