@@ -37,7 +37,12 @@ export default function Basic({ vm, actions }: PresentationProps) {
     >
       <style>{`
         .bl-focus:focus-visible { outline: 2px solid var(--bl-accent); outline-offset: 2px; border-radius: 10px; }
-        @media (prefers-reduced-motion: reduce) { .bl-anim { transition: none !important; } }
+        @keyframes bl-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .bl-reveal { opacity: 0; animation: bl-rise .55s cubic-bezier(.2, .6, .2, 1) forwards; }
+        @media (prefers-reduced-motion: reduce) {
+          .bl-anim { transition: none !important; }
+          .bl-reveal { animation: none !important; opacity: 1 !important; }
+        }
       `}</style>
 
       {vm.phase === 'unpublished' ? (
@@ -649,15 +654,10 @@ function ResultStep({ vm, actions }: PresentationProps) {
       footer={<Nav vm={vm} actions={actions} continueLabel="Continue" canContinue onContinue={actions.continueToContact} />}
     >
       <div className="flex flex-col gap-6">
-        <div>
-          <div className="tabular-nums" style={{ fontSize: 'clamp(30px, 8vw, 40px)', fontWeight: 700, letterSpacing: '-.01em' }}>
-            {money(r.estimate.min)} <span style={{ color: 'var(--bl-muted)' }}>–</span> {money(r.estimate.max)}
-          </div>
-          <div style={{ ...eyebrow, marginTop: 2 }}>{vm.copy.estimateLabel}</div>
-        </div>
-
+        {/* Staged reveal (Apple, not Vegas): recommendation (the heading, instant)
+            → rationale → estimate → what's included. Reduced-motion shows all at once. */}
         {rationale && (
-          <div style={{ borderRadius: 14, border: '1px solid var(--bl-border)', background: 'color-mix(in srgb, var(--bl-accent) 4%, var(--bl-surface))', padding: 16 }}>
+          <div className="bl-reveal" style={{ animationDelay: '.15s', borderRadius: 14, border: '1px solid var(--bl-border)', background: 'color-mix(in srgb, var(--bl-accent) 4%, var(--bl-surface))', padding: 16 }}>
             <div style={{ ...eyebrow, marginBottom: 8 }}>Why this fits</div>
             <p style={{ fontSize: 15, lineHeight: 1.55 }}>{rationale.summary}</p>
             {rationale.packageDescription && (
@@ -671,7 +671,14 @@ function ResultStep({ vm, actions }: PresentationProps) {
           </div>
         )}
 
-        <div>
+        <div className="bl-reveal" style={{ animationDelay: '.5s' }}>
+          <div className="tabular-nums" style={{ fontSize: 'clamp(30px, 8vw, 40px)', fontWeight: 700, letterSpacing: '-.01em' }}>
+            {money(r.estimate.min)} <span style={{ color: 'var(--bl-muted)' }}>–</span> {money(r.estimate.max)}
+          </div>
+          <div style={{ ...eyebrow, marginTop: 2 }}>{vm.copy.estimateLabel}</div>
+        </div>
+
+        <div className="bl-reveal" style={{ animationDelay: '.85s' }}>
           <div style={{ ...eyebrow, marginBottom: 10 }}>What’s included</div>
           <ul className="flex flex-col gap-2.5" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {r.deliverables.map(d => (

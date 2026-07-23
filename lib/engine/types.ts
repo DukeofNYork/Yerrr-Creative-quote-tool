@@ -84,6 +84,12 @@ export interface Question {
   max?: number;
   /** Multiplier applied to this question's complexity points */
   weight?: number;
+  /**
+   * Short phrase describing what this question captures, woven into the
+   * recommendation rationale (e.g. "timeline", "production quality").
+   * Read ONLY by the presentation layer — never by the engine.
+   */
+  rationaleLabel?: string;
 }
 
 // ---------- Client Profile Engine ----------

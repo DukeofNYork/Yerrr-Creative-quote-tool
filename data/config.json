@@ -22,7 +22,7 @@
       ]
     },
     {
-      "id": "goal", "type": "multiple_choice", "stage": "goals", "order": 2, "required": true,
+      "id": "goal", "type": "multiple_choice", "stage": "goals", "order": 2, "required": true, "rationaleLabel": "goals",
       "text": "What is the main goal of this project?",
       "options": [
         { "value": "brand_awareness", "label": "Build brand awareness", "complexity": 2 },
@@ -32,7 +32,7 @@
       ]
     },
     {
-      "id": "video_style", "type": "multi_select", "stage": "discovery", "order": 1, "required": true,
+      "id": "video_style", "type": "multi_select", "stage": "discovery", "order": 1, "required": true, "rationaleLabel": "the kind of video work you need",
       "serviceIds": ["video"],
       "text": "What kind of video work do you need?",
       "options": [
@@ -55,7 +55,7 @@
       "text": "How many shoot days do you anticipate?"
     },
     {
-      "id": "quality_expectation", "type": "multiple_choice", "stage": "outcomes", "order": 1, "required": true,
+      "id": "quality_expectation", "type": "multiple_choice", "stage": "outcomes", "order": 1, "required": true, "rationaleLabel": "production quality",
       "text": "What level of production quality are you looking for?",
       "options": [
         { "value": "simple", "label": "Simple and effective", "complexity": 0 },
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "id": "timeline_social", "type": "multiple_choice", "stage": "timeline", "order": 1, "required": true,
+      "id": "timeline_social", "type": "multiple_choice", "stage": "timeline", "order": 1, "required": true, "rationaleLabel": "turnaround timeline",
       "text": "How fast do you need it turned around?",
       "showIf": {
         "all": [
@@ -85,7 +85,7 @@
       ]
     },
     {
-      "id": "timeline", "type": "multiple_choice", "stage": "timeline", "order": 2, "required": true,
+      "id": "timeline", "type": "multiple_choice", "stage": "timeline", "order": 2, "required": true, "rationaleLabel": "timeline",
       "text": "When do you need this delivered?",
       "showIf": {
         "not": {

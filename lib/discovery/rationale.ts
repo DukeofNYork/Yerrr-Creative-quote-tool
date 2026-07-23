@@ -26,17 +26,30 @@ function humanList(items: string[]): string {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 }
 
+function isAnswered(v: unknown): boolean {
+  return v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
+}
+
 export function buildRationale(config: BusinessConfig, session: SessionAnswers, result: DiscoveryResult): Rationale {
-  // Reuse the same note derivation the flow already trusts; drop the meta rows.
+  // Chips: the customer's actual selections (same derivation the flow trusts).
   const highlights = buildNotes(config, session)
     .filter(n => n.k !== 'BUSINESS' && n.k !== 'SERVICE')
     .map(n => n.v)
     .slice(0, 3);
 
+  // Prose: topic phrases from answered questions that declare a rationaleLabel
+  // (e.g. "production quality", "timeline") — always grammatical. When a config
+  // hasn't authored labels, fall back to a clean generic lead; the chips still
+  // carry the personalization.
+  const topics = config.questions
+    .filter(q => q.rationaleLabel?.trim() && isAnswered(session.answers[q.id]))
+    .map(q => q.rationaleLabel!.trim())
+    .slice(0, 3);
+
   const pkg = result.package.name;
-  const summary = highlights.length
-    ? `Based on your ${humanList(highlights.map(h => h.toLowerCase()))}, we recommend the ${pkg} as the strongest fit for your goals.`
-    : `We recommend the ${pkg} as the strongest fit for what you shared.`;
+  const summary = topics.length
+    ? `Based on your ${humanList(topics)}, we believe the ${pkg} is the best fit for your goals.`
+    : `Based on what you shared, we believe the ${pkg} is the best fit for your goals.`;
 
   return {
     summary,
