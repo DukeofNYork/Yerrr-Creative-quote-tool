@@ -216,3 +216,11 @@ See the full architecture review and roadmap in the project discussion / ADRs.
 **Explicitly NOT in V1:** orgs/teams/roles, RLS/relational rebuild, billing, custom domains,
 email/SMS sending infrastructure, analytics dashboards, version history (beyond one
 draft+published), file uploads, anything AI, and full self-serve natural-language authoring.
+
+## Beyond V1 — engine-flexibility showcases (parked, not V1)
+
+The engine is a **configurable decision engine**; an estimate is only one possible
+outcome (also: recommendations, qualification, tier/placement, lead routing). Future
+*showcases* prove this on the exact same engine — only the template changes. First
+one captured: [Event Recommendation & Ticket Qualification](docs/showcases/event-recommendation.md).
+These do not change V1's focus on service businesses.
